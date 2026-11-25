@@ -29,7 +29,7 @@ function cors(origins) {
  * 로컬 서버(server.js)와 Vercel 함수(api/index.js)가 같은 함수를 쓴다.
  * @returns {Promise<{ app: import('express').Express, seeded: object|null }>}
  */
-async function buildApp({ db, corsOrigins = [], serveFrontend = true } = {}) {
+async function buildApp({ db, corsOrigins = [], serveFrontend = true, judge } = {}) {
   await initSchema(db);
   const seeded = await seedIfChanged(db);
   const content = await loadContent(db);
@@ -37,7 +37,7 @@ async function buildApp({ db, corsOrigins = [], serveFrontend = true } = {}) {
 
   const app = express();
   app.disable('x-powered-by');
-  app.use('/api', cors(corsOrigins), createApiRouter({ store: createStore(db), content }));
+  app.use('/api', cors(corsOrigins), createApiRouter({ store: createStore(db), content, ...(judge ? { judge } : {}) }));
 
   // 로컬에서는 같은 주소로 프론트도 서빙한다 (Vercel에서는 frontend/를 Vercel이 직접 서빙)
   if (serveFrontend && fs.existsSync(FRONTEND_DIR)) app.use(express.static(FRONTEND_DIR));

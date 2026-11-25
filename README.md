@@ -19,7 +19,8 @@ scamlab/
 │   │   ├── game/
 │   │   │   ├── attempt.js   한 사건 도전 판정 (순수 함수)
 │   │   │   ├── evaluate.js  세션 평가·점수·등급 (순수 함수)
-│   │   │   └── rules.js     채점 규칙 로더
+│   │   │   ├── rules.js     채점 규칙 로더
+│   │   │   └── judge.js     직접 답장 AI 채점 (Claude API)
 │   │   ├── content.js     문제 콘텐츠 메모리 로드, 공개용(정답 제거) 변환
 │   │   ├── store.js       플레이 기록 SQL
 │   │   ├── seed.js        content/*.json → DB

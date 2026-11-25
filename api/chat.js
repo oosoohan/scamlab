@@ -6,11 +6,17 @@ const MODEL = 'claude-haiku-5-5';
 const LIMIT = 40;               // IP당 10분에 40회
 const WINDOW_MS = 10 * 60 * 1000;
 const hits = new Map();         // 인스턴스 단위 간이 제한 (심사 기간용)
+// 비용 안전장치: 인스턴스당 1시간 총 호출 수 (AI_HOURLY_CAP으로 조정)
+const HOURLY_CAP = Number(process.env.AI_HOURLY_CAP) || 1500;
+let hour = { start: 0, n: 0 };
 
 const clip = (s, n) => String(s || '').slice(0, n);
 
 function limited(ip) {
   const now = Date.now();
+  if (now - hour.start > 60 * 60 * 1000) hour = { start: now, n: 0 };
+  if (++hour.n > HOURLY_CAP) return true;
+  if (hits.size > 5000) for (const [k, v] of hits) if (now - v[v.length - 1] > WINDOW_MS) hits.delete(k);
   const arr = (hits.get(ip) || []).filter(t => now - t < WINDOW_MS);
   arr.push(now); hits.set(ip, arr);
   return arr.length > LIMIT;
@@ -19,7 +25,7 @@ function limited(ip) {
 // 사기꾼 대사에 실제처럼 보이는 링크·번호가 섞이지 않도록 지운다
 function sanitizeReply(s) {
   return clip(s, 160)
-    .replace(/https?:\/\/\S+|www\.\S+|\b[\w-]+\.(com|net|kr|co|app|me|shop|org|io)\b\S*/gi, '[링크]')
+    .replace(/https?:\/\/\S+|www\.\S+|\b[\w-]+\.(com|net|kr|co|app|me|shop|org|io|example|test)\b\S*/gi, '[링크]')
     .replace(/\d[\d\s-]{6,}\d/g, '[번호]')
     .trim();
 }

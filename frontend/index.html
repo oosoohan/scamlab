@@ -253,7 +253,7 @@
   .bubble { max-width:76%; padding:10px 13px; border-radius:18px; font-size:16px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
   .in .bubble { background:var(--bubble-in); color:#111; border-bottom-left-radius:5px; }
   .out .bubble { background:var(--bubble-out); color:var(--out-text); border-bottom-right-radius:5px; }
-  .bubble .link { color:#2563eb; text-decoration:underline; word-break:break-all; cursor:not-allowed; }
+  .bubble .link { color:#2563eb; text-decoration:underline; word-break:break-all; cursor:pointer; }
   .bubble .img-attach { display:block; margin-top:6px; padding:28px 10px; border-radius:10px; background:repeating-linear-gradient(45deg,#e3e5ea,#e3e5ea 8px,#d8dbe1 8px,#d8dbe1 16px); text-align:center; font-size:12px; color:#555; }
   .flag { transition:background .4s, box-shadow .4s; border-radius:3px; }
   .revealed .flag { background:rgba(255,59,59,.16); box-shadow:inset 0 -2px 0 #ff3b3b; cursor:help; }
@@ -412,6 +412,45 @@
   @keyframes glow { 0%{box-shadow:0 0 0 0 rgba(255,77,77,.7)} 100%{box-shadow:0 0 0 10px rgba(255,77,77,0)} }
   @keyframes shake { 10%,90%{transform:translateX(-2px)} 20%,80%{transform:translateX(4px)} 30%,50%,70%{transform:translateX(-7px)} 40%,60%{transform:translateX(7px)} }
   @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+
+  /* ---------- 추가: 가짜 링크 페이지(폰 안 인앱 브라우저) ---------- */
+  .fw { position:absolute; inset:0; z-index:24; display:flex; flex-direction:column; background:#f3f4f6; color:#111; border-radius:inherit; overflow:hidden; animation:fwIn .22s ease-out; }
+  @keyframes fwIn { from { transform:translateY(24px); opacity:0; } to { transform:none; opacity:1; } }
+  .fw-bar { display:flex; align-items:center; gap:8px; padding:34px 12px 10px; background:#fff; border-bottom:1px solid #e5e7eb; }
+  .fw-x { border:0; background:none; font-size:22px; line-height:1; color:#333; cursor:pointer; padding:2px 6px; }
+  .fw-url { flex:1; min-width:0; display:flex; align-items:center; gap:6px; background:#f1f3f5; border-radius:10px; padding:8px 10px; font-size:13px; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fw-url i { font-style:normal; color:#9aa0a6; }
+  .fw-body { flex:1; overflow:auto; padding:18px 16px 24px; }
+  .fw-card { background:#fff; border-radius:14px; padding:18px 16px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .fw-card h3 { font-size:19px; margin:0 0 4px; }
+  .fw-card p { font-size:13.5px; color:#555; margin:0 0 14px; line-height:1.5; }
+  .fw-field { display:block; margin-bottom:10px; }
+  .fw-field span { display:block; font-size:12px; color:#666; margin-bottom:4px; }
+  .fw-field input { width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:10px; padding:11px 12px; font-size:15px; background:#fff; color:#111; }
+  .fw-go { width:100%; border:0; border-radius:12px; padding:13px; font-size:15px; font-weight:800; color:#fff; background:var(--fw-c,#2563eb); cursor:pointer; margin-top:4px; }
+  .fw-sub { font-size:12px; color:#888; text-align:center; margin-top:10px; }
+  .fw-big { font-size:30px; font-weight:800; color:#111; margin:6px 0; }
+  .fw-up { color:#e11d48; font-weight:800; }
+  .fw-dl { display:flex; gap:12px; align-items:center; background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin-bottom:12px; font-size:13.5px; }
+  .fw-dl b { display:block; font-size:15px; }
+  .fw-ic { width:46px; height:46px; border-radius:12px; display:grid; place-items:center; font-size:24px; background:#e0e7ff; flex-shrink:0; }
+  .fw-msg { background:#f1f3f5; border-radius:12px; padding:10px 12px; font-size:14px; margin-bottom:8px; max-width:85%; line-height:1.45; }
+  .fw-tag { text-align:center; font-size:11px; color:#9aa0a6; padding:8px; background:#fff; border-top:1px solid #eee; }
+  .fw-catch { position:absolute; inset:0; z-index:2; display:flex; flex-direction:column; justify-content:center; gap:10px; padding:28px 22px; background:rgba(20,4,8,.98); color:#fff; text-align:left; animation:fwIn .2s ease-out; overflow:auto; }
+  .fw-catch h2 { font-size:24px; margin:0; color:#ff6b78; }
+  .fw-catch p { margin:0; font-size:14px; line-height:1.55; color:rgba(255,255,255,.88); }
+  .fw-catch .dom { background:rgba(255,255,255,.08); border-radius:10px; padding:10px 12px; font-size:13px; word-break:break-all; }
+  .fw-catch .dom b { color:#ff8a95; }
+  .fw-catch .pen { font-weight:800; color:#ffb020; }
+  /* ---------- 추가: 직접 답장(AI) ---------- */
+  .free-row { display:flex; gap:8px; align-items:flex-end; }
+  .free-row textarea { flex:1; min-height:46px; max-height:120px; resize:none; border:1.5px solid rgba(0,0,0,.12); border-radius:14px; padding:11px 12px; font:inherit; font-size:16px; line-height:1.4; background:#fff; color:#111; }
+  .free-row textarea:focus { outline:none; border-color:var(--accent); }
+  .free-send { border:0; border-radius:14px; padding:0 16px; height:46px; font-size:15px; font-weight:800; background:var(--accent); color:var(--out-text); cursor:pointer; }
+  .free-send:disabled { opacity:.45; cursor:default; }
+  .free-note { font-size:11.5px; color:#777; }
+  .opt-head.dark + .free-row + .free-note, .opt-head.dark ~ .free-note { color:rgba(255,255,255,.7); }
+  .opt-tools { display:inline-flex; gap:6px; }
 </style>
 </head>
 <body>
@@ -454,7 +493,7 @@
     <div class="dock">
       <button class="rail-btn call glass" data-go="call" aria-expanded="false" aria-controls="reportPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>신고 <b>112</b></button>
     </div>
-    <p class="legal">게임 속 링크, 계정, 기관명은 모두 교육용 가상 설정입니다.</p>
+    <p class="legal">게임 속 서비스·계정 이름과 링크는 모두 교육용 가상 설정이며 실제 기업과 관계없습니다. 링크 주소는 실제로 접속되지 않는 예약 주소(.example)입니다.</p>
   </main>
 
   <aside class="console" aria-label="채팅 훈련">
@@ -1170,6 +1209,7 @@ function showOptions(turn) {
     if (!S.lastBubble.flags.length) { addSys('info', '', '이 메시지에는 표시할 위험 신호가 없습니다. 맥락으로 판단해 보세요.'); }
     S.stats.hints++; S.hintUsed = true; revealFlags(false); $('hintBtn').disabled = true;
   };
+  addFreeToggle(turn);
   scrollDown();
 }
 
@@ -1218,6 +1258,11 @@ async function choose(opt, turn) {
     S.busy = false; showOptions(turn); return;
   }
 
+  return handleResult(r);
+}
+
+/** 서버 판정 결과를 화면에 그린다 (선택지·직접 답장 공통) */
+async function handleResult(r) {
   S.stats[r.type]++;
   S.trust = r.trust;
   if (r.type === 'correct') {
@@ -1227,13 +1272,13 @@ async function choose(opt, turn) {
   } else if (r.type === 'trap') {
     S.stageMiss[stage().stage_id]++;
     updateHud(); shakePhone(false); flashSiren();
-    addSys('trap', `⚠️ 빈틈 노출 (신뢰도 ${r.trust_delta})`, esc(r.feedback));
+    addSys('trap', `⚠️ 빈틈 노출 (신뢰도 ${r.trust_delta})`, esc(r.feedback) + modelAnswer(r));
     await sleep(450); revealFlags(S.hintUsed);
     await sleep(1200);
   } else {
     S.stageMiss[stage().stage_id]++;
     shakePhone(true); flashSiren();
-    addSys('wrong', '❌ 치명적 실수', esc(r.feedback));
+    addSys('wrong', '❌ 치명적 실수', esc(r.feedback) + modelAnswer(r));
     await sleep(450); revealFlags(S.hintUsed);
     await sleep(1500);
   }
@@ -1451,7 +1496,7 @@ function stageState(i) {
   return i === S.stageIdx ? 'now' : 'open';
 }
 // 사건 = 잠금화면 알림. 보낸 사람과 첫 메시지를 미리 보여 주고, 아직 열리지 않은 사건은 내용을 흐리게 가린다
-const NOTI = { Karrot:['당','#ff7e36','당근'], SMS:['문','#34a35a','문자'], KakaoTalk:['카','#c9a800','카카오톡'], Instagram:['인','#c0479a','인스타그램'], Telegram:['텔','#2f8fd8','텔레그램'] };
+const NOTI = { Karrot:['홍','#ff7e36','홍당무'], SMS:['문','#34a35a','문자'], KakaoTalk:['카','#c9a800','코코아톡'], Instagram:['인','#c0479a','인스타그롬'], Telegram:['텔','#2f8fd8','텔레그롬'] };
 function renderScenarioGrid() {
   const g = $('scenarioGrid'); if (!g) return;
   const label = { done:'방어 성공', now:'지금', locked:'', open:'', replay:'다시 하는 중' };
@@ -1649,6 +1694,194 @@ $('menuSheet').querySelectorAll('.sheet-item').forEach(b => b.onclick = () => {
   if (go === 'report') openReport();
   if (go === 'top') window.scrollTo({ top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 });
+
+
+/* =========================================================================
+   추가 1. 가짜 링크 페이지 — 채팅 속 링크를 누르면 폰 안에서 '사기 페이지'가 열린다.
+   교육용 시뮬레이션: 실제 브랜드 로고·디자인을 흉내 내지 않고, 입력칸은 모두 읽기 전용이라
+   어떤 값도 입력·저장·전송되지 않는다. 입력칸이나 버튼을 건드리는 순간 정체를 밝힌다.
+   ========================================================================= */
+const FAKE_PAGES = [
+  { m:/safedeal/, kind:'form', c:'#16a34a', title:'안전결제 판매자 승인', desc:'구매자가 결제를 완료했습니다. 판매 승인 후 정산 계좌를 등록하면 바로 입금됩니다.',
+    fields:['아이디','비밀번호','정산받을 계좌번호'], go:'판매 승인하고 정산받기',
+    hit:'똑같이 생긴 가짜 로그인 화면이었습니다. 아이디·비밀번호와 계좌가 그대로 사기꾼에게 넘어가 계정이 털립니다.' },
+  { m:/open\.cocoa/, kind:'chat', c:'#111', title:'고객센터 상담 (오픈채팅)', chat:['안녕하세요 안전결제 고객센터입니다.','판매자 인증이 안 되어 결제가 보류됐어요.','인증 수수료 30만원 입금하시면 결제금과 함께 즉시 환급됩니다.'], go:'상담원에게 답장하기',
+    hit:'공식 고객센터는 오픈채팅으로 상담하지 않습니다. "인증 수수료"는 돌려받지 못하는 돈입니다.' },
+  { m:/1ogis/, kind:'form', c:'#2563eb', title:'택배 주소 수정', desc:'주소지 불명으로 배송이 보류되었습니다. 주소를 수정하고 재배송을 신청하세요. (재배송비 3,000원)',
+    fields:['받는 분 이름','휴대폰 번호','주소'], go:'재배송 신청 (3,000원 결제)',
+    hit:'주소 입력 다음 단계에서 카드 결제창과 "배송조회 앱(.apk)" 설치가 이어집니다. 카드 정보와 휴대폰이 함께 털립니다.' },
+  { m:/wedding-card/, kind:'apk', c:'#db2777', icon:'💌', title:'모바일 청첩장', desc:'청첩장을 보려면 전용 뷰어 앱이 필요합니다.', app:'wedding_card_viewer.apk', size:'4.8MB', go:'설치하고 청첩장 보기',
+    hit:'청첩장은 웹 페이지로 열리지 앱 설치를 요구하지 않습니다. 이 앱은 문자·연락처·인증번호를 빼가는 악성 앱입니다.' },
+  { m:/fss-safe/, kind:'apk', c:'#0f766e', icon:'🛡️', title:'휴대폰 보안점검', desc:'악성 앱 감염이 감지되었습니다. 즉시 보안점검 앱을 설치해 금융 피해를 예방하세요.', app:'security_check.apk', size:'6.1MB', go:'보안점검 앱 설치',
+    hit:'"보안 앱"이 바로 악성 앱입니다. 공공기관은 문자 링크로 앱 설치를 요구하지 않습니다.' },
+  { m:/spo-gokr/, kind:'form', c:'#1e3a8a', title:'사건 조회 서비스', desc:'사건번호와 본인 확인 정보를 입력하세요. 조회 후 녹취 보안을 위해 보안 앱 설치가 필요합니다.',
+    fields:['사건번호','이름','주민등록번호','거래 은행 · 계좌번호'], go:'사건 조회',
+    hit:'수사기관은 메신저 링크로 사건 조회를 시키지 않습니다. 이름·주민번호·계좌가 넘어가면 다음 단계는 "안전계좌 이체" 요구입니다.' },
+  { m:/bitx/, kind:'invest', c:'#7c3aed', title:'BITX Global Pro', desc:'VIP 시그널 회원 전용 거래소',
+    go:'10만원 입금하고 VIP 시그널 받기',
+    hit:'화면 속 수익률은 숫자만 바꾼 가짜입니다. 소액 출금은 한 번 되지만, 큰돈을 넣으면 "세금·수수료"를 내야 출금된다며 묶어 둡니다.' },
+  { m:/phone-care/, kind:'apk', c:'#0891b2', icon:'🖥️', title:'원격 지원', desc:'상담원이 고객님 화면을 보며 문제를 해결해 드립니다.', app:'remote_support.apk', size:'12.3MB', go:'설치하고 원격 연결 허용',
+    hit:'원격제어가 연결되면 상대가 내 화면을 보며 은행 앱을 열고 인증번호까지 가져갑니다.' },
+  { m:/lumiere-outlet/, kind:'shop', c:'#111', title:'LUMIERE OUTLET', desc:'해외 프리미엄 패딩 재고 정리',
+    go:'계좌이체로 결제 (5% 추가 할인)',
+    hit:'사업자정보도 통신판매업 신고도 없는 쇼핑몰입니다. 계좌이체로 낸 물건값은 은행 지급정지 대상이 아니라 돌려받기 어렵습니다.' },
+  { m:/lumiere-refund/, kind:'apk', c:'#111', icon:'↩️', title:'환불 신청', desc:'결제 오류 환불을 위해 본인 계좌 인증 앱을 설치하세요.', app:'refund_center.apk', size:'5.2MB', go:'설치하고 계좌 인증',
+    hit:'"환불 앱"은 2차 피싱입니다. 물건값에 이어 계좌 정보까지 넘어갑니다.' },
+  { m:/saesol-loan\.example\/app/, kind:'apk', c:'#065f46', icon:'🏦', title:'모바일 대출심사', desc:'스토어 미등록 전용 앱입니다. "출처를 알 수 없는 앱"을 허용하고 설치하세요.', app:'mobile_loan_check.apk', size:'9.7MB', go:'설치하고 심사 시작',
+    hit:'이 앱은 전화 가로채기 기능이 있습니다. 설치 후에는 금감원이나 은행 대표번호로 걸어도 사기꾼이 받습니다.' },
+  { m:/saesol-loan/, kind:'form', c:'#065f46', title:'정부지원 서민 대환대출 신청', desc:'특별 승인 대상자 전용 · 연 3.9% 고정 · 최대 3천만원 · 금일 마감',
+    fields:['이름','주민등록번호','휴대폰 번호','기존 대출 금액'], go:'한도 조회하기',
+    hit:'정책대출은 문자 링크로 신청받지 않습니다. 입력한 정보로 "심사팀" 전화가 걸려 오고, 앱 설치와 선입금 요구가 이어집니다.' }
+];
+const FAKE_DEFAULT = { kind:'form', c:'#444', title:'본인 확인', desc:'계속하려면 본인 확인이 필요합니다.', fields:['이름','휴대폰 번호'], go:'확인',
+  hit:'출처를 알 수 없는 링크에서 정보를 넣으면 그대로 사기꾼에게 넘어갑니다.' };
+
+function fakePageHTML(p) {
+  const btn = `<button class="fw-go" data-bait style="--fw-c:${p.c}">${esc(p.go)}</button>`;
+  if (p.kind === 'apk') return `<div class="fw-card"><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p>
+      <div class="fw-dl"><span class="fw-ic">${p.icon}</span><span><b>${esc(p.app)}</b>${p.size} · 출처를 알 수 없는 앱</span></div>${btn}
+      <div class="fw-sub">설치가 안 되면 설정 › 보안 › '출처를 알 수 없는 앱 허용'을 켜 주세요</div></div>`;
+  if (p.kind === 'chat') return `<div class="fw-card"><h3>${esc(p.title)}</h3><p>상담원 1명 참여 중</p>
+      ${p.chat.map(t => `<div class="fw-msg">${esc(t)}</div>`).join('')}
+      <label class="fw-field"><span>메시지 입력</span><input readonly data-bait placeholder="메시지를 입력하세요"></label>${btn}</div>`;
+  if (p.kind === 'invest') return `<div class="fw-card"><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p>
+      <div style="font-size:12px;color:#666">VIP 회원 평균 수익률 (7일)</div><div class="fw-big fw-up">+184.2%</div>
+      <p>방금 <b>김**님</b>이 2,340,000원을 출금했습니다 · 실시간 접속 1,284명</p>
+      <label class="fw-field"><span>추천인 코드</span><input readonly data-bait value="DANIEL7"></label>
+      <label class="fw-field"><span>입금할 금액</span><input readonly data-bait placeholder="100,000"></label>${btn}</div>`;
+  if (p.kind === 'shop') return `<div class="fw-card"><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p>
+      <div class="fw-dl"><span class="fw-ic">🧥</span><span><b>프리미엄 구스다운 패딩</b><s style="color:#999">1,290,000원</s> → <b class="fw-up" style="display:inline">283,800원</b> (78%)</span></div>
+      <p style="color:#e11d48;font-weight:700">⏰ 재고 정리 마감까지 00:14:52 · 남은 수량 3개</p>
+      <label class="fw-field"><span>결제 수단</span><input readonly data-bait value="카드결제 (점검중) · 계좌이체만 가능"></label>${btn}
+      <div class="fw-sub">사업자정보 · 통신판매업 신고번호: 표시 없음</div></div>`;
+  return `<div class="fw-card"><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p>
+      ${p.fields.map(f => `<label class="fw-field"><span>${esc(f)}</span><input readonly data-bait placeholder="${esc(f)}"></label>`).join('')}${btn}</div>`;
+}
+
+function openFakePage(url) {
+  if ($('fakeWeb')) return;
+  const p = FAKE_PAGES.find(x => x.m.test(url)) || FAKE_DEFAULT;
+  const host = url.replace(/^https?:\/\//, '').split(/[/?#]/)[0];
+  const wrap = document.createElement('div');
+  wrap.id = 'fakeWeb'; wrap.className = 'fw'; wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-label', '링크로 열린 웹페이지');
+  wrap.innerHTML = `<div class="fw-bar"><button class="fw-x" id="fwBack" aria-label="닫기">✕</button><div class="fw-url"><i>🔒</i>${esc(host)}<i>${esc(url.slice(url.indexOf(host) + host.length))}</i></div></div>
+    <div class="fw-body">${fakePageHTML(p)}</div><div class="fw-tag">사기 생존기 · 훈련용 가상 페이지 (입력값은 어디에도 저장·전송되지 않습니다)</div>`;
+  $('phone').appendChild(wrap);
+  const close = () => wrap.remove();
+  $('fwBack').onclick = () => {
+    close();
+    addSys('info', '', `🔗 링크를 닫았습니다. 다음부턴 누르기 전에 주소를 보세요: <b>${esc(host)}</b> 는 공식 주소가 아닙니다.`);
+  };
+  wrap.querySelectorAll('[data-bait]').forEach(el => {
+    const fire = e => { e.preventDefault(); el.blur(); caught(p, host, url, wrap); };
+    el.addEventListener('focus', fire); el.addEventListener('click', fire);
+  });
+}
+
+function caught(p, host, url, wrap) {
+  if (wrap.querySelector('.fw-catch')) return;
+  // 신뢰도·점수는 서버가 관리하므로 여기서는 깎지 않고, 무엇이 위험했는지만 보여 준다
+  const c = document.createElement('div');
+  c.className = 'fw-catch';
+  c.innerHTML = `<h2>🎣 낚였습니다</h2>
+    <p>${esc(p.hit)}</p>
+    <div class="dom">이 페이지 주소: <b>${esc(host)}</b><br>진짜 서비스라면 공식 도메인이어야 합니다. 링크로 열린 페이지에서는 아무것도 입력하지 마세요.</div>
+    <p class="pen">실제 상황이었다면 여기서 피해가 시작됩니다.</p>
+    <button class="btn" id="fwOut">대화로 돌아가기</button>`;
+  wrap.appendChild(c);
+  $('fwOut').focus({ preventScroll:true });
+  $('fwOut').onclick = () => wrap.remove();
+}
+
+$('messages').addEventListener('click', e => {
+  const l = e.target.closest('.bubble .link'); if (!l) return;
+  openFakePage(l.textContent.trim());
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('fakeWeb') && !$('fakeWeb').querySelector('.fw-catch')) $('fwBack').click(); });
+
+/* =========================================================================
+   추가 2. 직접 답장 — 선택지 대신 내가 쓴 답장을 AI가 채점하고, 사기꾼 역으로 한마디 받아친다.
+   API 키는 서버(/api/chat)에만 있다. 서버가 없거나 실패하면 선택지로 자동 복귀한다.
+   실제 개인정보처럼 보이는 입력은 서버로 보내지 않고 막는다.
+   ========================================================================= */
+let freeMode = false;
+const PII = [
+  [/\d{6}\s*-?\s*[1-4]\d{6}/, '주민등록번호'],
+  [/(?:\d{4}[\s-]?){3}\d{4}/, '카드번호'],
+  [/01[016789][\s-]?\d{3,4}[\s-]?\d{4}/, '전화번호'],
+  [/\d{2,6}-\d{2,6}-\d{2,8}|\d{10,}/, '계좌번호'],
+  [/[\w.+-]+@[\w-]+\.[\w.]+/, '이메일']
+];
+
+function renderFree(turn) {
+  const box = $('options');
+  box.querySelectorAll('.opt, .free-row, .free-note').forEach(el => el.remove());
+  if (!freeMode) {
+    currentOpts = shuffle(turn.options);
+    currentOpts.forEach((o, i) => {
+      const b = document.createElement('button'); b.className = 'opt'; b.style.animationDelay = (i * 0.07) + 's';
+      b.innerHTML = `<span class="k">${i + 1}</span>${esc(o.text)}`; b.onclick = () => choose(o, turn); box.appendChild(b);
+    });
+  } else {
+    currentOpts = [];
+    box.insertAdjacentHTML('beforeend', `<div class="free-row"><textarea id="freeIn" rows="1" maxlength="200" placeholder="사기꾼에게 직접 답장해 보세요"></textarea><button class="free-send" id="freeSend">보내기</button></div>
+      <div class="free-note">AI가 답장을 채점합니다 · 쓴 답장은 채점을 위해 외부 AI(Anthropic)로 보내지고 저장하지 않으며, 판정이 틀릴 수 있어요 · 실제 개인정보(번호·계좌 등)는 가짜라도 쓰지 마세요</div>`);
+    const ta = $('freeIn');
+    ta.focus({ preventScroll:true });
+    ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px'; };
+    ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('freeSend').click(); } };
+    $('freeSend').onclick = () => sendFree(ta.value, turn);
+  }
+  const tog = $('freeTog'); if (tog) tog.textContent = freeMode ? '선택지 보기' : '✍️ 직접 답장';
+  scrollDown();
+}
+
+function addFreeToggle(turn) {
+  const head = $('options').querySelector('.opt-head'); if (!head || $('freeTog')) return;
+  const hint = $('hintBtn');
+  const wrap = document.createElement('span'); wrap.className = 'opt-tools';
+  hint.replaceWith(wrap);
+  const tog = document.createElement('button'); tog.className = 'hint-btn'; tog.id = 'freeTog'; tog.style.color = '#1d4ed8';
+  tog.onclick = () => { freeMode = !freeMode; renderFree(turn); };
+  wrap.append(tog, hint);
+  renderFree(turn);
+}
+
+const modelAnswer = r => r.model_answer ? `<br><span style="opacity:.8">모범 답안 → ${esc(r.model_answer.replace(/^\(|\)$/g, ''))}</span>` : '';
+
+async function sendFree(raw, turn) {
+  const text = raw.replace(/\s+/g, ' ').trim();
+  if (!text || S.busy) return;
+  const pii = PII.find(([re]) => re.test(text));
+  if (pii) { addSys('info', '🔒 보내지 않았어요', `${pii[1]}처럼 보이는 내용이 있습니다. 실제 정보는 게임에서도 쓰지 마세요. "보낼게요"처럼 말로만 표현해도 채점됩니다.`); return; }
+  S.busy = true;
+  clearOptions('상대방이 입력 중...');
+  addBubble('out', esc(text));
+  const t = theme(), row = document.createElement('div');
+  row.className = 'row in';
+  row.innerHTML = `<div class="mini" style="background:${t.avatar}">${t.icon}</div><div class="bubble typing" aria-label="입력 중"><span></span><span></span><span></span></div>`;
+  $('messages').appendChild(row); scrollDown();
+
+  let r;
+  try { r = await ScamApi.freeAnswer(S.attemptId, turn.turn_id, text, S.hintUsed); }
+  catch (e) {
+    row.remove();
+    if (e.status === 409) {
+      addSys('info', '', '진행 상황이 서버와 어긋나 이 사건을 처음부터 다시 시작합니다.');
+      await sleep(1200); return startStage(S.stageIdx, !!S.replay);
+    }
+    $('messages').lastElementChild?.remove();   // 보낸 말풍선을 거둔다
+    const why = e.code === 'PERSONAL_INFO' ? '개인정보처럼 보이는 내용이라 보내지 않았어요. 다르게 써 주세요.'
+      : e.code === 'TOO_MANY' ? '직접 답장을 너무 많이 보냈어요. 잠시 선택지로 진행해 주세요.'
+      : 'AI 연결이 되지 않아 선택지로 진행합니다.';
+    addSys('info', '', why);
+    if (e.code !== 'PERSONAL_INFO') freeMode = false;
+    S.busy = false; showOptions(turn); return;
+  }
+  row.remove();
+  if (r.reply) { addBubble('in', esc(r.reply)); await sleep(700); }
+  return handleResult(r);
+}
 
 // 시작: 콘텐츠를 서버에서 받고 → 저장된 세션이 있으면 되살린 뒤 → 인트로
 loadContent().then(async () => {

@@ -54,6 +54,7 @@ turso db tokens create scamlab     # Auth Token
      |---|---|
      | `TURSO_DATABASE_URL` | 2단계의 Database URL |
      | `TURSO_AUTH_TOKEN` | 2단계의 Auth Token |
+     | `ANTHROPIC_API_KEY` | (선택) 직접 답장 AI 채점용. 없으면 선택지로만 진행 |
 4. **Deploy**
 
 > Vercel은 `main` 브랜치를 실서비스(Production)로, 다른 브랜치·PR은 미리보기(Preview) 주소로 배포한다.

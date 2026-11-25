@@ -67,6 +67,11 @@
     answer: (attemptId, turnId, optionId, hintUsed) =>
       request('POST', `/attempts/${attemptId}/answers`, { turn_id: turnId, option_id: optionId, hint_used: !!hintUsed }),
 
+    /** 직접 답장 → answer 와 같은 응답 + { reply(사기꾼 한마디), model_answer(정답 예시, 맞혔으면 null) }.
+     *  AI가 꺼져 있거나 실패하면 503(AI_DISABLED / AI_FAILED), 개인정보로 보이면 400(PERSONAL_INFO) */
+    freeAnswer: (attemptId, turnId, text, hintUsed) =>
+      request('POST', `/attempts/${attemptId}/free-answers`, { turn_id: turnId, text, hint_used: !!hintUsed }),
+
     /** 사후 자가진단 → 최종 리포트 */
     finish: (sessionId, postConfidence) => request('POST', `/sessions/${sessionId}/finish`, { post_confidence: postConfidence }),
     report: sessionId => request('GET', `/sessions/${sessionId}/report`)

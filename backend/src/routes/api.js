@@ -4,6 +4,7 @@ const { publicContent } = require('../content');
 const { foldAttempt } = require('../game/attempt');
 const { evaluateSession } = require('../game/evaluate');
 const { loadRules, CURRENT_VERSION } = require('../game/rules');
+const { judgeFreeText, findPii } = require('../game/judge');
 
 class ApiError extends Error {
   constructor(status, code, message, extra) { super(message); Object.assign(this, { status, code, extra }); }
@@ -16,7 +17,7 @@ const isScale = v => Number.isInteger(v) && v >= 1 && v <= 5;
 /** Express 4는 async 함수의 오류를 잡지 못하므로 감싸서 오류 처리기로 넘긴다 */
 const h = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-function createApiRouter({ store, content }) {
+function createApiRouter({ store, content, judge = judgeFreeText }) {
   const router = express.Router();
   router.use(express.json({ limit: '10kb' }));   // 잘못된 JSON도 아래 오류 처리기에서 JSON으로 응답
   const publicJson = JSON.stringify(publicContent(content));
@@ -120,33 +121,31 @@ function createApiRouter({ store, content }) {
     res.status(201).json(await attemptView(attempt, session));
   }));
 
-  router.post('/attempts/:id/answers', h(async (req, res) => {
-    const { attempt, session } = await ownAttempt(req, req.params.id);
-    const { turn_id, option_id, hint_used = false } = req.body || {};
+  /** 지금 답할 차례의 턴을 확인한다 (선택지 답안·직접 답장 공통) */
+  const currentTurn = async (attempt, session, turnId) => {
     if (attempt.status !== 'playing') {
       throw new ApiError(409, 'ATTEMPT_ENDED', '이미 끝난(또는 다른 사건으로 넘어간) 도전입니다.', { status: attempt.status });
     }
     const rules = loadRules(session.scoring_version);
     const scenario = content.scenarioById.get(attempt.scenario_id);
-
-    // 판정은 메모리에서 하고, 저장은 한 번의 batch로 (중복 제출은 UNIQUE 제약이 막는다)
     const answers = await store.answersOfAttempt(attempt.id);
     const before = foldAttempt(scenario, answers, rules);
     const turn = scenario.turns[before.nextTurnIndex];
-    if (!turn || Number(turn_id) !== turn.id) {
+    if (!turn || Number(turnId) !== turn.id) {
       throw new ApiError(409, 'WRONG_TURN', '지금 답할 차례의 턴이 아닙니다.', { expected_turn_id: turn?.id ?? null });
     }
-    const option = turn.options.find(o => o.id === option_id);
-    if (!option) throw bad('INVALID_OPTION', '이 턴에 없는 선택지입니다.');
-    const after = foldAttempt(scenario, [...answers, { turn_id: turn.id, option_id: option.id }], rules);
+    return { rules, scenario, answers, before, turn };
+  };
 
+  /** 고른 선택지를 기록하고 응답 본문을 만든다 (선택지 답안·직접 답장 공통) */
+  const applyOption = async ({ attempt, session, rules, scenario, answers, before, turn, option, hintUsed }) => {
+    const after = foldAttempt(scenario, [...answers, { turn_id: turn.id, option_id: option.id }], rules);
     try {
-      await store.recordAnswer(attempt.id, turn.id, option.id, !!hint_used, after.status !== 'playing' ? after.status : null);
+      await store.recordAnswer(attempt.id, turn.id, option.id, !!hintUsed, after.status !== 'playing' ? after.status : null);
     } catch (e) {
       if (/UNIQUE/i.test(String(e.message))) throw new ApiError(409, 'WRONG_TURN', '이미 답한 턴입니다.', { expected_turn_id: null });
       throw e;
     }
-
     const body = {
       type: option.type,
       feedback: option.feedback,
@@ -159,7 +158,6 @@ function createApiRouter({ store, content }) {
       game_over_reason: null,
       stage_result: null
     };
-
     const attempts = await store.sessionAttempts(session.id);
     if (after.status === 'failed') {
       body.game_over_reason = after.failCause === 'trust_depleted'
@@ -170,13 +168,67 @@ function createApiRouter({ store, content }) {
       // 다시 해 보기라면 이번 도전 전의 최고 기록과 비교해서 알려 준다
       const prevBest = (await evaluate(session, attempts.filter(a => a.id !== attempt.id)))
         .stages.find(s => s.scenario_id === scenario.id).best_trust;
-      body.stage_result = {
-        trust: after.trust,
-        previous_best: prevBest,
-        improved: prevBest == null || after.trust > prevBest
-      };
+      body.stage_result = { trust: after.trust, previous_best: prevBest, improved: prevBest == null || after.trust > prevBest };
     }
     body.summary = summaryOf(await evaluate(session, attempts));
+    return body;
+  };
+
+  router.post('/attempts/:id/answers', h(async (req, res) => {
+    const { attempt, session } = await ownAttempt(req, req.params.id);
+    const { turn_id, option_id, hint_used = false } = req.body || {};
+    const ctx = await currentTurn(attempt, session, turn_id);
+    const option = ctx.turn.options.find(o => o.id === option_id);
+    if (!option) throw bad('INVALID_OPTION', '이 턴에 없는 선택지입니다.');
+    res.json(await applyOption({ attempt, session, ...ctx, option, hintUsed: hint_used }));
+  }));
+
+  /* ---------- 직접 답장: AI가 판정한 유형의 선택지를 고른 것으로 기록한다 ---------- */
+  // 간이 사용량 제한 (함수 인스턴스 단위, 심사 기간용): 플레이어 토큰별 + IP별 + 시간당 총량
+  const freeHits = new Map();
+  const FREE_LIMIT = 60, IP_LIMIT = 120, FREE_WINDOW_MS = 10 * 60 * 1000;
+  const HOURLY_CAP = Number(process.env.AI_HOURLY_CAP) || 1500;   // 비용 안전장치
+  let hour = { start: 0, n: 0 };
+  const over = (key, limit, now) => {
+    const arr = (freeHits.get(key) || []).filter(t => now - t < FREE_WINDOW_MS);
+    arr.push(now); freeHits.set(key, arr);
+    return arr.length > limit;
+  };
+  const freeLimited = (token, ip) => {
+    const now = Date.now();
+    if (now - hour.start > 60 * 60 * 1000) hour = { start: now, n: 0 };
+    if (++hour.n > HOURLY_CAP) return true;
+    if (freeHits.size > 5000) for (const [k, v] of freeHits) if (now - v[v.length - 1] > FREE_WINDOW_MS) freeHits.delete(k);
+    return over('t:' + token, FREE_LIMIT, now) | over('ip:' + ip, IP_LIMIT, now);
+  };
+  const clientIp = req => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
+
+  router.post('/attempts/:id/free-answers', h(async (req, res) => {
+    const { attempt, session } = await ownAttempt(req, req.params.id);
+    const { turn_id, text, hint_used = false } = req.body || {};
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!clean || clean.length > 200) throw bad('INVALID_TEXT', '답장은 1~200자여야 합니다.');
+    const pii = findPii(clean);
+    if (pii) throw bad('PERSONAL_INFO', `${pii}처럼 보이는 내용은 보낼 수 없습니다.`, { kind: pii });
+    if (freeLimited(session.player_token, clientIp(req))) throw new ApiError(429, 'TOO_MANY', '잠시 후 다시 시도해 주세요.');
+
+    const ctx = await currentTurn(attempt, session, turn_id);
+    const nextTurn = ctx.scenario.turns[ctx.before.nextTurnIndex + 1] || null;
+    let verdict;
+    try {
+      verdict = await judge({ scenario: ctx.scenario, turn: ctx.turn, nextTurn, text: clean });
+    } catch (e) {
+      if (e.code === 'AI_DISABLED') throw new ApiError(503, 'AI_DISABLED', 'AI 채점이 꺼져 있습니다. 선택지로 진행해 주세요.');
+      console.error('AI 채점 실패:', e.cause || e);
+      throw new ApiError(503, 'AI_FAILED', 'AI 채점에 실패했습니다. 선택지로 진행해 주세요.');
+    }
+    const option = ctx.turn.options.find(o => o.type === verdict.type);
+    const body = await applyOption({ attempt, session, ...ctx, option, hintUsed: hint_used });
+    // AI 설명이 있으면 그걸 보여 주고, 같은 상황의 모범 답안(정답 선택지)도 함께 알려 준다
+    if (verdict.feedback) body.feedback = verdict.feedback;
+    body.reply = verdict.reply || '';
+    body.matched_option_id = option.id;
+    body.model_answer = verdict.type === 'correct' ? null : ctx.turn.options.find(o => o.type === 'correct').text;
     res.json(body);
   }));
 
