@@ -428,8 +428,17 @@
   .intro-video { opacity:0; transition:opacity .25s; }
   .intro-video.show { opacity:1; }
   .intro-slot { position:absolute; overflow:hidden; opacity:0; transition:opacity .5s .1s; color:#fff; display:flex; flex-direction:column;
-                background:linear-gradient(180deg, rgba(14,22,70,.35), rgba(6,10,40,.2)); }
+                background:linear-gradient(180deg, #0e1646, #060a28); }
   .intro-slot.show { opacity:1; }
+  /* 영상이 끝난 뒤 꺼진 폰 화면 위의 문구 (Intro.runHook) */
+  .intro-hook { position:absolute; inset:0; z-index:6; display:flex; align-items:center; justify-content:center; padding:0 9%; cursor:pointer;
+                background:linear-gradient(155deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,0) 38%), #030405; transition:opacity .6s ease; }
+  .intro-hook.out { opacity:0; pointer-events:none; }
+  .intro-hook p { text-align:center; word-break:keep-all; color:#fff; font-size:clamp(20px, 2.3vw, 30px); line-height:1.5; font-weight:600; letter-spacing:-.025em; }
+  .intro-hook span { display:block; opacity:0; transform:translateY(.35em); filter:blur(5px); transition:opacity 1s cubic-bezier(.16,1,.3,1), transform 1s cubic-bezier(.16,1,.3,1), filter 1s cubic-bezier(.16,1,.3,1); }
+  .intro-hook span.gap { height:.5em; }
+  .intro-hook span.em { color:#ff5a5a; font-weight:800; }
+  .intro-hook span.show { opacity:1; transform:none; filter:none; }
   /* 영상 속 화면 가장자리는 흐릿하게 번져 있어 좌표만으로는 2~3px 틈이 남는다. 베젤 색 띠를 둘러 틈을 덮는다 */
   .intro-slot { box-shadow:0 0 0 5px #04050a; }
   .intro.zoom-in .intro-slot { transition:opacity .5s 1s; }
@@ -933,7 +942,7 @@
     const dist = (p, r) => Math.hypot(p[0] - r[0], p[1] - r[1]);
     const sw = (dist(pts[0], pts[1]) + dist(pts[3], pts[2])) / 2, sh = (dist(pts[0], pts[3]) + dist(pts[1], pts[2])) / 2;
     // 목표: 화면 높이의 80%(폭이 좁으면 폭의 92%)인 똑바른 직사각형, 뷰포트 가운데
-    const asp = sw / sh, th = Math.min(0.8 * vh, 0.92 * vw / asp), tw = th * asp;
+    const asp = sw / sh, th = Math.min(Math.max(0.8 * vh, sh), 0.96 * vh, 0.92 * vw / asp), tw = th * asp;
     const L = (vw - tw) / 2, T = (vh - th) / 2;
     const target = [[L, T], [L + tw, T], [L + tw, T + th], [L, T + th]];
     const e = zoom < 0.5 ? 4 * zoom ** 3 : 1 - (-2 * zoom + 2) ** 3 / 2;   // easeInOutCubic
@@ -1005,7 +1014,7 @@
     video.classList.add('show');
     skipBtn.classList.add('show');
     // 재생 중일 때만 타이틀로: 건너뛰기·진입 이후에 늦게 도착한 ended/타이머가 게임 위로 타이틀을 다시 띄우지 않게 한다
-    const finish = () => { if (phase === 'playing') toTitle(); };
+    const finish = () => { if (phase === 'playing') toTitle(true); };
     video.addEventListener('ended', finish, { once: true });
     video.addEventListener('error', finish, { once: true });
     const pr = video.play();
@@ -1013,7 +1022,26 @@
     safety = setTimeout(finish, ((video.duration && isFinite(video.duration)) ? video.duration * 1000 : 8000) + 2000);
   }
 
-  function toTitle() {
+  // 꺼진 폰 화면 위에 문구를 한 줄씩 띄운 뒤 걷어 내 타이틀을 보여 준다. 누르면 바로 넘어간다
+  function runHook() {
+    const el = document.createElement('div');
+    el.className = 'intro-hook';
+    el.innerHTML = '<p>' + cfg.hook.map(t => t === '' ? '<span class="gap"></span>' : t[0] === '!' ? `<span class="em">${t.slice(1)}</span>` : `<span>${t}</span>`).join('') + '</p>';
+    slot.appendChild(el);
+    const lines = [...el.querySelectorAll('span:not(.gap)')];
+    let gone = false;
+    const end = () => { if (gone) return; gone = true; el.classList.add('out'); setTimeout(() => el.remove(), 650); };
+    el.onclick = end;
+    (async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      await wait(2300);                       // 폰 쪽으로 다가가며 화면이 꺼지는 동안
+      for (const s of lines) { if (gone) return; s.classList.add('show'); await wait(550); }
+      await wait(1800);                       // 읽을 시간
+      end();
+    })();
+  }
+
+  function toTitle(withHook) {
     if (phase === 'title') return;
     clearTimeout(safety); safety = 0;
     hideLoader();
@@ -1029,6 +1057,7 @@
     slot.innerHTML = '';
     cfg.onTitle(slot);
     slot.classList.add('show');
+    if (withHook && cfg.hook && !reduce()) runHook();
   }
 
   const Intro = {
@@ -2190,8 +2219,10 @@ loadContent().then(async () => {
     video: 'assets/intro.mp4',
     poster: 'assets/intro-poster.webp',
     back: 'assets/intro-back.webp',
-    phoneRect: { x:0.4505, y:0.1472, w:0.1932, h:0.7472, r:0.12 },
-    phoneQuad: [[0.4836,0.2306],[0.6204,0.1981],[0.6838,0.7004],[0.5440,0.7426]],
+    phoneRect: { x:0.3625, y:0.0241, w:0.2745, h:0.9500, r:0.14 },
+    phoneQuad: [[0.3625,0.0241],[0.6370,0.0241],[0.6370,0.9741],[0.3625,0.9741]],
+    // 영상이 끝나면 폰 화면이 꺼지고 이 문구가 한 줄씩 떠오른 뒤 타이틀로 넘어간다('' = 줄 간격, '!' = 강조)
+    hook: ['매일 새로워지는', '사기 수법,', '', '!어제의 상식으로', '막을 수 있을까요?'],
     onTitle: renderTitle,
     // 아직 못 막은 첫 사건부터. 모두 막았는데 리포트 전이면 사후 자가진단으로
     onEnter: () => { const f = frontier(); f < SCENARIOS.length ? showStageIntro(f) : showPostCheck(); focusPhone(); }
