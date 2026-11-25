@@ -1110,9 +1110,9 @@ const THEMES = {
 // 기본값. 세션을 만들면 서버 규칙(rules/v1.json) 값으로 바뀐다
 let START_BALANCE = 3200000;
 let TRAP_PENALTY = 25;
-// 규칙 v2(MONEY): 치명타는 WRONG_LOSS원, 링크 열기는 LINK_LOSS원을 잃고 대화가 이어진다. v1이면 치명타 즉시 실패
-let MONEY = false, WRONG_LOSS = 0, LINK_LOSS = 0;
-function applyRules(r) { if (!r) return; START_BALANCE = r.start_balance; TRAP_PENALTY = r.trap_penalty; MONEY = !!r.money_mode; WRONG_LOSS = r.wrong_loss || 0; LINK_LOSS = r.link_loss || 0; }
+// 규칙 v2(MONEY): 치명타·링크 열기는 그때 남은 돈의 일부를 잃고 대화가 이어진다(충전 없음). v1이면 치명타 즉시 실패
+let MONEY = false;
+function applyRules(r) { if (!r) return; START_BALANCE = r.start_balance; TRAP_PENALTY = r.trap_penalty; MONEY = !!r.money_mode; }
 
 /* ---------- 상태 ---------- */
 // sessionId·attemptId: 서버 기록 id. 점수·오답 노트는 서버가 계산하고, 여기 stats·stageMiss는 화면 표시용이다
@@ -1135,7 +1135,7 @@ function setupInbox() {
   }
   S.order = order;
   try { S.ledger = JSON.parse(localStorage.getItem('scamlab_ledger_' + S.sessionId) || '[]'); } catch (e) { S.ledger = []; }
-  if (!S.ledger.length) addLedger('in', '급여 입금', START_BALANCE, '훈련 시작');
+  if (!S.ledger.length) addLedger('ok', '시작 잔고', won(START_BALANCE), '훈련 시작 · 충전 없음');
 }
 const handled = id => !!S.cleared[id] || !!S.failed[id];
 // 처음엔 4통, 메시지를 하나 끝낼 때마다 새 알림이 1통씩 더 도착한다

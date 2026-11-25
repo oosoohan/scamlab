@@ -107,10 +107,10 @@ test('규칙 v2: 치명타는 돈·신뢰도를 깎고 이어지며, 링크를 �
   let id = 0;
   const at = (scenario_id, answers, is_replay = 0, clicks = []) => ({ id: ++id, scenario_id, is_replay, answers, clicks });
   const ev = evaluateSession({ content, rules: v2, attempts: [
-    at(1, ans, 0, ['http://a', 'http://b']),          // 40만 + 링크 2개 40만
-    at(1, ans, 1, ['http://a'])                        // 다시 해 보기: 돈 안 잃음
+    at(1, ans, 0, [{ url: 'http://a', at: '' }, { url: 'http://b', at: '' }]),   // 치명타 45%: 320→180, 링크 20%: 180→140(−36→40), 140→110(−28→30)
+    at(1, ans, 1, [{ url: 'http://a', at: '' }])                                 // 다시 해 보기: 돈 안 잃음
   ] });
-  assert.equal(ev.balance, 3200000 - 800000);
-  assert.equal(ev.lost, 800000);
+  assert.equal(ev.balance, 1100000);
+  assert.equal(ev.lost, 2100000);
   assert.equal(ev.link_clicks, 2);
 });

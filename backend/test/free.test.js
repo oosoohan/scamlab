@@ -49,7 +49,7 @@ test('직접 답장: 판정 유형대로 기록되고 AI 대사·설명이 함�
   r = await srv.call('POST', `/attempts/${a.attempt_id}/free-answers`, { turn_id: turns[2].id, text: '링크 눌러서 로그인할게요' });
   assert.equal(r.body.type, 'wrong');
   assert.equal(r.body.status, 'continue');   // 규칙 v2: 돈을 잃고 대화가 이어진다
-  assert.equal(r.body.loss, 400000);
+  assert.equal(r.body.loss, 1400000);   // 320만의 45%
   assert.equal(seen.length, 3);
   assert.equal(seen[0].hasNext, true);
 });

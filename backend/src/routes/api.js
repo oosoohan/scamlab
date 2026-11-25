@@ -52,7 +52,7 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
   /** 화면에 필요한 규칙 값만 (money_mode: 치명타·링크가 돈을 깎고 대화가 이어지는 v2 규칙인지) */
   const publicRules = rules => ({
     start_trust: rules.start_trust, start_balance: rules.start_balance, trap_penalty: rules.trap_penalty,
-    money_mode: !rules.wrong_is_fatal, wrong_loss: rules.wrong_loss || 0, link_loss: rules.link_loss || 0
+    money_mode: !rules.wrong_is_fatal, wrong_loss_rate: rules.wrong_loss_rate || 0, link_loss_rate: rules.link_loss_rate || 0
   });
 
   const summaryOf = ev => ({
@@ -165,8 +165,6 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
       feedback: option.feedback,
       trust: after.trust,
       trust_delta: after.trust - before.trust,
-      // 이 답으로 잃은 돈 (규칙 v2의 치명타, 본 도전일 때만)
-      loss: option.type === 'wrong' && !rules.wrong_is_fatal && !attempt.is_replay ? rules.wrong_loss : 0,
       revealed_flags: turn.flags,
       status: after.status === 'playing' ? 'continue' : after.status,
       next_turn_id: after.status === 'playing' ? scenario.turns[after.nextTurnIndex].id : null,
@@ -188,7 +186,10 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
         .stages.find(s => s.scenario_id === scenario.id).best_trust;
       body.stage_result = { trust: after.trust, previous_best: prevBest, improved: prevBest == null || after.trust > prevBest };
     }
-    body.summary = summaryOf(await evaluate(session, attempts));
+    const ev = await evaluate(session, attempts);
+    // 이 답으로 잃은 돈 (규칙 v2의 치명타, 본 도전일 때만): 방금 기록한 치명타가 가장 마지막 손실이다
+    body.loss = option.type === 'wrong' && !rules.wrong_is_fatal && !attempt.is_replay ? ev.last_loss : 0;
+    body.summary = summaryOf(ev);
     return body;
   };
 
@@ -260,9 +261,9 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     if (!url || !scenario.turns.some(t => t.scammer_msg.includes(url))) throw bad('INVALID_URL', '이 대화에 없는 링크입니다.');
     const rules = loadRules(session.scoring_version);
     let charged = false;
-    if (attempt.status === 'playing' && !attempt.is_replay && rules.link_loss) charged = await store.recordLinkClick(attempt.id, url);
-    const attempts = await store.sessionAttempts(session.id);
-    res.json({ charged, loss: charged ? rules.link_loss : 0, summary: summaryOf(await evaluate(session, attempts)) });
+    if (attempt.status === 'playing' && !attempt.is_replay && rules.link_loss_rate) charged = await store.recordLinkClick(attempt.id, url);
+    const ev = await evaluate(session, await store.sessionAttempts(session.id));
+    res.json({ charged, loss: charged ? ev.last_loss : 0, summary: summaryOf(ev) });
   }));
 
   /* ---------- 마무리·리포트 ---------- */
