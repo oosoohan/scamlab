@@ -168,6 +168,19 @@
   .rail-btn.call svg { width:20px; height:20px; }
   .rail-btn.call b { font-variant-numeric:tabular-nums; }
   .legal { font-size:14px; color:rgba(255,255,255,.74); padding:10px 6px 6px; }
+  /* 넓은 화면(세 열): 신고처와 주의 문구를 오른쪽 열 아래(폰 아랫선)에 펼쳐 둔다. 좁은 화면은 왼쪽 아래 버튼·팝업을 그대로 쓴다 */
+  .side-foot { display:none; }
+  @media (min-width:1281px){
+    .side { padding-bottom:max(4px, calc((100dvh - 860px) / 2)); }
+    .side-foot { display:flex; flex-direction:column; gap:8px; margin-top:auto; padding-top:10px; }
+    .main > .dock, .main > .legal, .report-pop { display:none !important; }
+  }
+  .report-card { padding:18px 20px 12px; border-radius:24px; font-size:15px; line-height:1.6; }
+  .report-card h4 { font-size:16px; font-weight:700; margin-bottom:6px; }
+  .report-card .r { display:flex; align-items:baseline; gap:10px; padding:9px 0; border-top:1px solid rgba(255,255,255,.12); color:rgba(255,255,255,.82); text-decoration:none; }
+  .report-card .r:first-of-type { border-top:0; }
+  .report-card b { font-size:20px; font-weight:800; color:#fff; min-width:52px; font-variant-numeric:tabular-nums; }
+  .side-foot .legal { font-size:13px; line-height:1.5; padding:2px 8px 0; color:rgba(255,255,255,.62); }
 
   /* 위험 신호 도감 칩 (폰 안 도감 화면) */
   .dex-list { display:flex; flex-wrap:wrap; gap:8px; align-content:flex-start; }
@@ -381,6 +394,7 @@
   .overlay canvas.siren { display:block; width:calc(100% + 52px); height:72px; margin:-20px -26px 8px; }
 
   /* ===== intro ===== */
+  .boot-cover { position:fixed; inset:0; z-index:101; background:#030408; }
   .intro { position:fixed; inset:0; z-index:100; background:#030408; overflow:hidden; }
   .intro-stage { position:absolute; inset:0; transition:transform .72s cubic-bezier(.7,0,.2,1), opacity .72s; }
   .intro.entering .intro-stage { opacity:0; }
@@ -484,6 +498,8 @@
 </style>
 </head>
 <body>
+<!-- 첫 화면 덮개: 인트로(로딩창)가 만들어지면 걷어 낸다. 그 전에 대시보드가 잠깐 비치던 문제를 막는다 -->
+<div class="boot-cover" id="bootCover" aria-hidden="true"></div>
 <div class="wall" aria-hidden="true"></div>
 <div class="app" id="app">
   <div class="report-pop glass" id="reportPop" role="dialog" aria-label="실제 피해 신고처">
@@ -566,6 +582,15 @@
       <button class="acc-h" id="accReportH" aria-expanded="false" aria-controls="accReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="acc-t">학습 리포트</span><span class="acc-m" id="accReportM">잠김</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="acc-b" id="accReport" role="region" aria-labelledby="accReportH" inert><div><div class="acc-in" id="accReportBody"></div></div></div>
     </section>
+      <div class="side-foot">
+      <section class="report-card glass" aria-label="실제 피해 신고처">
+        <h4>이미 돈을 보냈다면 바로 신고</h4>
+        <a class="r" href="tel:112"><b>112</b>경찰 · 보이스피싱 신고·지급정지</a>
+        <a class="r" href="tel:1332"><b>1332</b>금융감독원 · 금융사기 상담</a>
+        <a class="r" href="tel:118"><b>118</b>불법스팸·스미싱 신고</a>
+      </section>
+      <p class="legal">게임 속 서비스·계정 이름과 링크는 모두 교육용 가상 설정이며 실제 기업과 관계없습니다. 링크 주소는 실제로 접속되지 않는 예약 주소(.example)입니다.</p>
+    </div>
   </nav>
 </div>
 <div class="art-modal" id="artModal"></div>
@@ -780,9 +805,6 @@
    단계는 document.body.dataset.intro 에 기록: loading → playing → title → entered */
 (function () {
   const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const ssGet = k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
-  const ssSet = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} };
-  const SEEN = 'ss_intro_seen';
   const IMG_W = 1920, IMG_H = 1080;
 
   let safety = 0, cfg = null, root, stage, media, video, poster, slot, skipBtn, loaderEl, lp, siren, phase = '';
@@ -814,6 +836,7 @@
       </div>
       <button class="intro-skip" type="button">건너뛰기 ›</button>`;
     document.body.appendChild(root);
+    const cover = document.getElementById('bootCover'); if (cover) cover.remove();
     stage = root.querySelector('.intro-stage');
     video = root.querySelector('.intro-video');
     poster = root.querySelector('.intro-poster');
@@ -958,7 +981,6 @@
   function toTitle() {
     if (phase === 'title') return;
     clearTimeout(safety); safety = 0;
-    ssSet(SEEN, '1');
     hideLoader();
     skipBtn.classList.remove('show');
     try { video.pause(); } catch (e) {}
@@ -985,7 +1007,7 @@
       if (q.get('introposter')) cfg.poster = q.get('introposter');
       if (q.get('introquad')) { try { cfg.phoneQuad = JSON.parse(q.get('introquad')); } catch (e) {} }
       layout();
-      const skipVideo = q.has('nointro') || reduce() || ssGet(SEEN) === '1';
+      const skipVideo = q.has('nointro') || reduce();   // 새로고침해도 인트로를 다시 보여 준다(건너뛰기 버튼으로 넘길 수 있음)
       if (q.has('nointro')) {               // 테스트·바로가기용: 로딩도 건너뜀
         setPoster();
         toTitle();
@@ -2077,6 +2099,7 @@ loadContent().then(async () => {
     onEnter: () => { const f = frontier(); f < SCENARIOS.length ? showStageIntro(f) : showPostCheck(); focusPhone(); }
   });
 }).catch(() => {
+  const cover = document.getElementById('bootCover'); if (cover) cover.remove();
   document.body.insertAdjacentHTML('beforeend',
     '<div role="alert" style="position:fixed;inset:0;z-index:999;display:grid;place-items:center;background:#07080c;color:#fff;font:16px/1.6 system-ui;text-align:center;padding:24px">' +
     '서버에 연결하지 못했습니다.<br>백엔드(npm start)가 켜져 있는지 확인한 뒤 새로고침해 주세요.</div>');
