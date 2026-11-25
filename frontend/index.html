@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사기 생존기 — 채팅으로 배우는 2026 금융사기 방어 훈련</title>
+<meta name="description" content="중고거래, 스미싱, 기관 사칭, 로맨스 스캠, 취업 사기까지. 실제 채팅처럼 대화하면서 위험 신호를 찾아내는 금융사기 예방 학습 게임">
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+  :root {
+    --ink:#07080f; --ink-2:#0c0e1a; --panel:rgba(255,255,255,.04); --panel-2:rgba(255,255,255,.07);
+    --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.16); --muted:rgba(255,255,255,.58); --faint:rgba(255,255,255,.52);
+    --siren-red:#ff2d55; --siren-blue:#2f6bff; --siren-violet:#8a3cff;
+    --good:#3ddc84; --warn:#ffb020; --bad:#ff4d4d;
+    --radius:24px; --display:'Pretendard',system-ui,sans-serif;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; }
+  body { font-family:'Pretendard',-apple-system,system-ui,sans-serif; background:var(--ink); color:#fff; overflow:hidden; -webkit-font-smoothing:antialiased; word-break:keep-all; overflow-wrap:anywhere; }
+  /* 배경: 식탁 위 폰 사진을 잠금화면 배경처럼 깐다. 왼쪽만 어둡게 눌러 글자를 읽히게 하고 가운데 사진 속 폰은 그대로 보이게 둔다 */
+  .wall { position:fixed; inset:0; z-index:0; background:#07080c url('assets/bg-wall.webp') 50% 50%/cover; pointer-events:none; }
+  .wall::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg, rgba(5,6,10,.74) 0%, rgba(5,6,10,.5) 30%, rgba(5,6,10,0) 46%, rgba(5,6,10,0) 62%, rgba(5,6,10,.58) 76%); }
+  button { font:inherit; color:inherit; }
+  :focus-visible { outline:3px solid #7aa2ff; outline-offset:2px; }
+  ::selection { background:rgba(214,31,44,.85); color:#fff; }
+  .grain { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.05; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+  /* 넓은 PC: 폰이 가운데로 오므로 사진 속 손과 폰을 오른쪽 메뉴 열 뒤로 옮긴다. 사진 왼쪽 끝은 바탕색으로 녹인다 */
+  @media (min-width:1281px){
+    .wall { --bx:calc(75vw + 104px - 90.3vh);
+            background:linear-gradient(90deg, #07080c var(--bx), rgba(7,8,12,0) calc(var(--bx) + 260px)), url('assets/bg-wall.webp') var(--bx) 40%/auto 108% no-repeat, #07080c; }
+    .wall::after { background:linear-gradient(90deg, rgba(5,6,10,.78) 0%, rgba(5,6,10,.6) 32%, rgba(5,6,10,.32) 52%, rgba(5,6,10,.08) 66%, rgba(5,6,10,0) 74%); }
+  }
+
+  /* ===== 레이아웃: main | console | side (폰이 화면 가운데) ===== */
+  .app { position:relative; z-index:2; display:grid; grid-template-columns:minmax(0,1fr) 440px minmax(0,1fr); gap:20px; height:100vh; height:100dvh; padding:20px 32px; }
+  .app > .main { grid-column:1; grid-row:1; justify-self:start; width:100%; }
+  .app > .console { grid-column:2; grid-row:1; }
+  .app > .side { grid-column:3; grid-row:1; justify-self:end; }
+  /* iOS 27 리퀴드 글라스: 짙은 반투명 몸체, 어두운 테두리, 밝은 윗면 하이라이트 */
+  .glass { position:relative; background:rgba(24,26,34,.7); border-radius:var(--radius); backdrop-filter:blur(30px) saturate(1.6); -webkit-backdrop-filter:blur(30px) saturate(1.6);
+           box-shadow:inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 rgba(255,255,255,.08), inset 0 0 0 1px rgba(255,255,255,.12), 0 0 0 1px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.3); }
+
+  /* 신고처 팝업 (데스크톱 하단 '신고' 버튼) */
+  .report-pop { position:absolute; left:32px; bottom:100px; width:300px; padding:18px 20px; z-index:40; font-size:15px; line-height:1.6; display:none; border-radius:24px; }
+  .report-pop.open { display:block; animation:pop .2s ease-out; }
+  .report-pop h4 { font-size:16px; font-weight:700; margin-bottom:6px; }
+  .report-pop .r { display:flex; align-items:baseline; gap:10px; padding:8px 0; border-top:1px solid rgba(255,255,255,.12); color:rgba(255,255,255,.82); }
+  .report-pop .r:first-of-type { border-top:0; }
+  .report-pop b { font-size:20px; font-weight:800; color:#fff; min-width:52px; font-variant-numeric:tabular-nums; }
+
+  /* main: 잠금화면 */
+  .main { min-width:0; max-width:520px; overflow-y:auto; display:flex; flex-direction:column; padding:20px 4px 0 0; scrollbar-width:none; }
+  .main::-webkit-scrollbar { display:none; }
+  .lock-date { text-align:center; font-size:20px; font-weight:600; color:rgba(255,255,255,.82); text-shadow:0 1px 8px rgba(0,0,0,.35); }
+  .lock-date h1 { display:inline; font:inherit; }
+  .lock-clock { text-align:center; font-size:72px; font-weight:700; letter-spacing:-2.5px; line-height:1; margin-top:2px; font-variant-numeric:tabular-nums; color:rgba(255,255,255,.94); text-shadow:0 2px 20px rgba(0,0,0,.3); }
+  /* 위젯 W3: iOS처럼 크기가 다른 위젯. 큰 '지킨 돈' + 작은 '방어'·'위험 신호' 두 개를 위아래로 */
+  .widgets { display:flex; gap:10px; margin-top:20px; }
+  .wg { min-width:0; border-radius:22px; padding:12px 14px; }
+  .wg span { display:block; font-size:14px; color:rgba(255,255,255,.78); }
+  .wg b { display:block; font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .wg-money { flex:1.7; display:flex; flex-direction:column; padding:14px 16px; }
+  .wg-money .wm { display:flex; align-items:center; gap:12px; flex:1; margin-top:6px; }
+  .wg-money b { font-size:26px; letter-spacing:-.3px; }
+  .wg-money small { display:block; font-size:13px; color:rgba(255,255,255,.72); margin-top:3px; }
+  .ring { --p:100; --c:#7fe3a8; position:relative; flex:none; width:50px; height:50px; display:grid; place-items:center; }
+  .ring::before { content:''; position:absolute; inset:0; border-radius:50%; background:conic-gradient(var(--c) calc(var(--p) * 1%), rgba(255,255,255,.14) 0);
+                  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); mask:radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); }
+  .ring i { font-style:normal; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .wg-col { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
+  .wg-s { flex:1; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 14px; }
+  .wg-s span { white-space:nowrap; }
+  .wg-s b { font-size:20px; }
+  .stack-head { margin-top:26px; padding:0 6px; }
+  .stack-head h2 { font-size:28px; font-weight:700; letter-spacing:-.4px; text-shadow:0 1px 8px rgba(0,0,0,.35); }
+  .stack-head h2 em { font-style:normal; color:#ff8a95; }
+  .stack-head p { font-size:15px; color:rgba(255,255,255,.8); margin-top:2px; }
+
+  /* 사건 = 알림 */
+  .scenarios { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .scn { display:grid; grid-template-columns:40px minmax(0,1fr) auto; gap:12px; align-items:center; width:100%; padding:13px 16px 13px 14px; border:0; border-radius:24px; color:#fff; text-align:left; cursor:pointer; transition:transform .2s cubic-bezier(.2,.8,.2,1), background .2s; }
+  .scn:hover { transform:translateY(-2px); background:rgba(36,38,48,.78); }
+  .scn:active { transform:scale(.99); }
+  .scn .ic { width:40px; height:40px; border-radius:10px; display:grid; place-items:center; font-weight:800; font-size:15px; color:#fff; box-shadow:inset 0 1px 0 rgba(255,255,255,.35); }
+  .scn .tx { min-width:0; }
+  .scn .who, .scn .msg { display:block; }
+  .scn .who { font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .scn .who span { font-weight:500; color:rgba(255,255,255,.74); margin-left:6px; }
+  .scn .msg { margin-top:2px; font-size:16px; line-height:1.4; color:rgba(255,255,255,.92); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .scn .t { font-size:14px; color:rgba(255,255,255,.74); align-self:start; padding-top:1px; white-space:nowrap; }
+  .scn.now { background:rgba(118,22,36,.8); }
+  .scn.now:hover { background:rgba(136,26,42,.84); }
+  .scn.now .t { color:#fff; font-weight:700; }
+  .scn.locked .msg { filter:blur(4px); opacity:.7; }
+  .scn.done .t { color:#7fe3a8; font-weight:700; }
+  .scn.replay { background:rgba(26,54,110,.82); }
+  .scn.replay .t { color:#fff; font-weight:700; }
+  .scn.done .msg { color:rgba(255,255,255,.62); }
+
+  /* 하단: 신고 버튼 (메뉴는 오른쪽 아코디언으로 옮김) */
+  .dock { display:flex; align-items:center; gap:12px; margin-top:auto; padding:20px 0 4px; }
+  .rail-btn { display:flex; align-items:center; justify-content:center; border:0; background:transparent; color:#fff; cursor:pointer; transition:background .2s; }
+  .rail-btn:hover { background:rgba(36,38,48,.78); }
+  .rail-btn.call { flex-direction:row; gap:8px; height:62px; padding:0 22px; border-radius:999px; font-size:15px; font-weight:700; }
+
+  /* 오른쪽 메뉴: 접힌 아코디언. 누를 때마다 내용이 펼쳐지고, 한 번에 하나만 열린다 */
+  .side { width:min(100%, 380px); min-height:0; max-height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:20px 2px 4px; scrollbar-width:none; }
+  .side::-webkit-scrollbar { display:none; }
+  .acc { border-radius:24px; flex:none; }
+  .acc-h { display:flex; align-items:center; gap:12px; width:100%; padding:15px 18px; border:0; border-radius:24px; background:transparent; color:#fff; font-size:16px; font-weight:700; text-align:left; cursor:pointer; transition:background .2s; }
+  .acc-h:hover { background:rgba(255,255,255,.06); }
+  .acc-h > svg { width:22px; height:22px; flex:none; }
+  .acc-h .acc-t { flex:1; min-width:0; }
+  .acc-h .acc-m { font-size:14px; font-weight:600; color:rgba(255,255,255,.74); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .acc-h .chev { width:18px; height:18px; color:rgba(255,255,255,.7); transition:transform .28s cubic-bezier(.2,.8,.2,1); }
+  .acc.open .acc-h .chev { transform:rotate(180deg); }
+  .acc-b { display:grid; grid-template-rows:0fr; transition:grid-template-rows .28s cubic-bezier(.2,.8,.2,1); }
+  .acc.open .acc-b { grid-template-rows:1fr; }
+  .acc-b > div { min-height:0; overflow:hidden; }
+  .acc-in { padding:2px 16px 16px; font-size:15px; line-height:1.55; color:rgba(255,255,255,.86); }
+  .acc-row { display:grid; grid-template-columns:32px minmax(0,1fr) auto; gap:10px; align-items:center; width:100%; padding:8px 8px; border:0; border-radius:14px; background:transparent; color:#fff; text-align:left; cursor:pointer; font-size:15px; }
+  .acc-row:hover { background:rgba(255,255,255,.07); }
+  .acc-row .ic { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; font-weight:800; font-size:13px; }
+  .acc-row .nm { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .acc-row .nm small { font-size:13px; color:rgba(255,255,255,.66); margin-right:6px; }
+  .acc-row .st { font-size:14px; color:rgba(255,255,255,.66); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .acc-row .st.done { color:#7fe3a8; font-weight:700; }
+  .acc-row .st.now { color:#ff8a95; font-weight:700; }
+  .acc-tip { margin-top:12px; padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.06); font-size:14px; min-height:44px; }
+  .acc-dots { display:flex; gap:6px; margin:4px 0 10px; }
+  .acc-dots i { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.14); }
+  .acc-dots i.on { background:#7fe3a8; }
+  .acc-stat { display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid rgba(255,255,255,.1); }
+  .acc-stat:first-of-type { border-top:0; }
+  .acc-stat b { font-variant-numeric:tabular-nums; }
+  .acc-go { width:100%; margin-top:12px; height:46px; border:0; border-radius:14px; background:#d61f2c; color:#fff; font-size:15px; font-weight:700; cursor:pointer; }
+  .acc-go:hover { background:#e52a37; }
+  .rail-btn.call svg { width:20px; height:20px; }
+  .rail-btn.call b { font-variant-numeric:tabular-nums; }
+  .legal { font-size:14px; color:rgba(255,255,255,.74); padding:10px 6px 6px; }
+
+  /* 위험 신호 도감 칩 (폰 안 도감 화면) */
+  .dex-list { display:flex; flex-wrap:wrap; gap:8px; align-content:flex-start; }
+  .chip { font-size:14px; padding:7px 12px; border-radius:999px; background:rgba(255,255,255,.05); color:rgba(255,255,255,.55); border:1px dashed rgba(255,255,255,.22); cursor:default; transition:background .3s, color .3s, border-color .3s; }
+  .chip.on { background:rgba(214,31,44,.18); color:#ffc2cb; border:1px solid rgba(255,77,94,.5); cursor:pointer; }
+  .chip.new { animation:glow 1.2s ease-out; }
+
+  /* console (phone) */
+  .console { display:flex; align-items:center; justify-content:center; min-height:0; position:relative; }
+  /* 경광등: 틀린 답(빈틈·치명타)을 고른 순간에만 약 3초 동안 폰 테두리를 빨강·파랑 빛이 돌아가며 비춘다. 평소에는 꺼져 있다.
+     링은 폰 뒤에 깔리고 폰의 검은 베젤이 가운데를 가려 테두리만 보인다 */
+  @property --siren-a { syntax:'<angle>'; inherits:false; initial-value:0deg; }
+  .console::before, .console::after { content:''; position:absolute; left:50%; top:50%; width:426px; height:calc(min(820px,100%) + 36px); transform:translate(-50%,-50%); border-radius:64px; pointer-events:none;
+    background:conic-gradient(from var(--siren-a), #ff4d61 0deg, rgba(255,77,97,.75) 50deg, transparent 110deg, transparent 180deg, #4f82ff 180deg, rgba(79,130,255,.75) 230deg, transparent 290deg, transparent 360deg);
+    animation:sirenSpin 2.4s linear infinite paused; opacity:0; transition:opacity .8s ease-in-out; }
+  .console::after { filter:blur(14px); }
+  .console::before, .console::after { z-index:0; }
+  .console > .phone { z-index:1; }
+  .console.siren-on::before { opacity:1; animation-play-state:running; }
+  .console.siren-on::after { opacity:.75; animation-play-state:running; }
+  @keyframes sirenSpin { to { --siren-a:360deg; } }
+  @media (prefers-reduced-motion: reduce) { .console::before, .console::after { animation:none; --siren-a:30deg; } }
+
+  /* ===== phone ===== */
+  .phone { --accent:#ff6f0f; --bg:#fff; --bubble-in:#f2f3f6; --bubble-out:#ff6f0f; --out-text:#fff; --header:#fff; --header-text:#111; --chat-bg:#fff;
+           position:relative; width:390px; height:min(820px,100%); background:var(--bg); color:#111; border-radius:46px; overflow:hidden;
+           box-shadow:0 0 0 10px #12141d, 0 0 0 11px rgba(255,255,255,.14), 0 40px 90px rgba(0,0,0,.65); display:flex; flex-direction:column; }
+  .phone-siren { position:absolute; left:0; right:0; top:44px; height:56px; width:100%; z-index:25; pointer-events:none; }
+
+  @media (max-height:860px) and (min-width:1101px){
+    .main{padding-top:4px}
+    .lock-clock{font-size:60px; letter-spacing:-2px}
+    .widgets{margin-top:14px} .stack-head{margin-top:16px}
+    .scn{padding:10px 16px 10px 14px} .scenarios{gap:6px}
+    .dock{padding-top:14px}
+  }
+  /* ===== responsive ===== */
+  /* 중간 폭: 세 열이 좁으므로 메시지 | 폰 두 열로 두고, 메뉴는 메시지 열 아래에 붙인다 */
+  @media (max-width:1280px) and (min-width:1101px){
+    .app{grid-template-columns:minmax(0,1fr) 440px; grid-template-rows:minmax(0,1fr) auto; padding:20px 20px 20px 40px}
+    .app > .main{grid-row:1; min-height:0}
+    .app > .console{grid-column:2; grid-row:1 / 3}
+    .app > .side{grid-column:1; grid-row:2; justify-self:start; width:min(100%,520px); max-height:42vh; padding-top:0}
+  }
+  @media (max-width:1100px){
+    body{overflow:auto}
+    .app{grid-template-columns:minmax(0,1fr); height:auto; min-height:100vh; padding:24px}
+    .app > .main, .app > .console, .app > .side{grid-column:1; grid-row:auto}
+    .app > .side{justify-self:start; width:min(100%,640px); max-height:none; overflow:visible; padding:0}
+    .main{overflow:visible; max-width:640px; padding-top:8px}
+    .console{height:860px}
+    .wall{position:fixed}
+  }
+  @media (max-width:760px){
+    .app{display:flex; flex-direction:column; gap:16px; padding:16px}
+    .report-pop, .dock, .side{display:none!important}
+    .lock-date{font-size:17px}
+    .lock-clock{font-size:56px; letter-spacing:-2px}
+    .widgets{gap:8px; margin-top:16px}
+    .wg{padding:10px 12px; border-radius:18px} .wg span{font-size:14px} .wg b{font-size:17px}
+    .wg-money{flex:1.5} .wg-money .ring{display:none} .wg-money b{font-size:22px} .wg-money small{font-size:12px}
+    .wg-col{gap:8px} .wg-s{padding:8px 12px} .wg-s span{font-size:13px}
+    .scn .who span{display:block; margin-left:0; font-size:14px}
+    .stack-head h2{font-size:22px}
+    .scn{padding:12px 14px 12px 12px; border-radius:20px}
+    .console{height:auto; margin:0 -16px}
+    .console::before, .console::after{display:none}
+    .phone{width:100%; height:100vh; height:100dvh; border-radius:0; box-shadow:none}
+    .hud .menu-btn{display:inline-flex}
+  }
+
+  .statusbar { height:44px; padding:14px 28px 0; display:flex; justify-content:space-between; font-size:14px; font-weight:600; background:var(--header); color:var(--header-text); flex-shrink:0; }
+  .hud { display:flex; gap:8px; padding:8px 12px; background:#14161c; color:#fff; font-size:13px; flex-shrink:0; align-items:center; }
+  .hud .stage-tag { background:#d61f2c; padding:3px 8px; border-radius:6px; font-weight:800; white-space:nowrap; }
+  .gauge { flex:1; }
+  .gauge-label { display:flex; justify-content:space-between; opacity:.8; margin-bottom:3px; }
+  .gauge-bar { height:6px; background:#2b2f3a; border-radius:3px; overflow:hidden; }
+  .gauge-fill { height:100%; background:linear-gradient(90deg,#3ddc84,#a6f36b); transition:width .6s cubic-bezier(.2,.8,.2,1), background .3s; }
+  .balance { font-weight:800; font-size:15px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .balance.zero { color:#ff4d4d; }
+  .menu-btn { display:none; align-items:center; gap:5px; height:44px; margin:-8px -6px -8px 0; padding:0 8px 0 6px; border:0; background:transparent; color:#fff; font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+  .menu-btn svg { width:20px; height:20px; }
+  .sheet-dim { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.5); animation:fade .2s ease-out; }
+  .sheet { position:fixed; left:0; right:0; bottom:0; z-index:61; background:#fff; color:#111; border-radius:20px 20px 0 0; padding:10px 16px calc(18px + env(safe-area-inset-bottom)); box-shadow:0 -10px 30px rgba(0,0,0,.3); max-height:88dvh; overflow-y:auto; animation:sheetUp .28s cubic-bezier(.2,.8,.2,1); }
+  .sheet[hidden], .sheet-dim[hidden] { display:none; }
+  @keyframes sheetUp { from { transform:translateY(100%); } to { transform:none; } }
+  .sheet .grab { width:40px; height:4px; border-radius:2px; background:#d5d7dd; margin:0 auto 10px; }
+  .sheet-item { display:flex; align-items:center; gap:14px; width:100%; min-height:56px; padding:0 4px; border:0; border-bottom:1px solid #eef0f3; background:none; color:#111; font:inherit; font-size:17px; font-weight:600; text-align:left; cursor:pointer; }
+  .sheet-item svg { width:22px; height:22px; color:#555; flex-shrink:0; }
+  .sheet-item small { margin-left:auto; font-size:14px; font-weight:500; color:#5c5f66; }
+  .sheet-item:disabled { color:#8b8e95; cursor:default; } .sheet-item:disabled svg { color:#a9acb2; }
+  .sheet-call { padding:14px 4px 6px; border-bottom:1px solid #eef0f3; }
+  .sheet-call h3 { display:flex; align-items:center; gap:14px; font-size:17px; font-weight:600; }
+  .sheet-call h3 svg { width:22px; height:22px; color:#555; }
+  .sheet-call a { display:flex; align-items:baseline; gap:12px; min-height:48px; padding:10px 0 0 36px; color:#111; text-decoration:none; font-size:15px; color:#3d4047; }
+  .sheet-call a b { font-size:20px; font-weight:800; color:#c8102e; font-variant-numeric:tabular-nums; min-width:52px; }
+  .sheet-item:last-child { border-bottom:0; }
+  .dex-btn { display:none; background:#2b2f3a; border:0; color:#fff; border-radius:8px; padding:4px 7px; font-size:12px; cursor:pointer; }
+
+  .chat-header { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--header); color:var(--header-text); border-bottom:1px solid rgba(0,0,0,.07); flex-shrink:0; }
+  .back { font-size:22px; opacity:.7; }
+  .avatar { width:38px; height:38px; border-radius:50%; background:#ddd; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:#fff; flex-shrink:0; }
+  .who { flex:1; min-width:0; }
+  .who-name { font-weight:700; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .who-status { font-size:13px; color:color-mix(in srgb, var(--header-text) 70%, transparent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .platform-pill { font-size:13px; font-weight:700; padding:3px 8px; border-radius:20px; background:var(--accent); color:var(--out-text); }
+
+  .messages { flex:1; overflow-y:auto; padding:16px 12px 8px; display:flex; flex-direction:column; gap:8px; background:var(--chat-bg); scroll-behavior:smooth; }
+  .row { display:flex; gap:8px; align-items:flex-end; animation:pop .3s ease-out; }
+  .row.out { justify-content:flex-end; }
+  .row .mini { width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:700; }
+  .bubble { max-width:76%; padding:10px 13px; border-radius:18px; font-size:16px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+  .in .bubble { background:var(--bubble-in); color:#111; border-bottom-left-radius:5px; }
+  .out .bubble { background:var(--bubble-out); color:var(--out-text); border-bottom-right-radius:5px; }
+  .bubble .link { color:#2563eb; text-decoration:underline; word-break:break-all; cursor:not-allowed; }
+  .bubble .img-attach { display:block; margin-top:6px; padding:28px 10px; border-radius:10px; background:repeating-linear-gradient(45deg,#e3e5ea,#e3e5ea 8px,#d8dbe1 8px,#d8dbe1 16px); text-align:center; font-size:12px; color:#555; }
+  .flag { transition:background .4s, box-shadow .4s; border-radius:3px; }
+  .revealed .flag { background:rgba(255,59,59,.16); box-shadow:inset 0 -2px 0 #ff3b3b; cursor:help; }
+  .revealed .link.flag { color:#d11; }
+  .time { font-size:11.5px; opacity:.6; margin-bottom:2px; white-space:nowrap; }
+  .typing { display:inline-flex; gap:4px; padding:14px 16px; }
+  .typing span { width:7px; height:7px; border-radius:50%; background:#999; animation:blink 1.2s infinite; }
+  .typing span:nth-child(2){animation-delay:.2s} .typing span:nth-child(3){animation-delay:.4s}
+  .sys { align-self:center; max-width:92%; font-size:14px; line-height:1.5; padding:9px 13px; border-radius:12px; animation:pop .3s ease-out; }
+  .sys.correct { background:#e7f8ee; color:#106b3a; border:1px solid #b7e8cb; }
+  .sys.trap { background:#fff6e0; color:#8a5a00; border:1px solid #f3dc9e; }
+  .sys.wrong { background:#ffe8e8; color:#a01818; border:1px solid #f5b8b8; }
+  .sys.info { background:rgba(0,0,0,.06); color:#555; text-align:center; }
+  .sys.flags { background:#1b1f2c; color:#ffd2d2; border:1px solid #3a2230; }
+  .sys b { display:block; margin-bottom:2px; }
+  .sys .tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .sys .tags span { background:rgba(255,77,77,.2); border-radius:999px; padding:2px 8px; font-size:13px; }
+
+  .options { padding:10px 12px 16px; background:var(--header); border-top:1px solid rgba(0,0,0,.07); display:flex; flex-direction:column; gap:7px; flex-shrink:0; min-height:60px; }
+  .opt-head { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:#555; margin-bottom:1px; }
+  .opt-head.dark { color:rgba(255,255,255,.75); }
+  .hint-btn { display:inline-flex; align-items:center; gap:5px; border:1px solid rgba(0,0,0,.15); background:#fff; color:#c2410c; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:700; cursor:pointer; }
+  .hint-btn svg { width:14px; height:14px; }
+  .hint-btn:disabled { opacity:.4; cursor:default; }
+  .opt { text-align:left; font-size:16px; line-height:1.45; padding:13px 14px; border-radius:14px; border:1.5px solid rgba(0,0,0,.1); background:#fff; color:#111; cursor:pointer; transition:transform .1s, border-color .15s, background .15s; animation:slideUp .3s ease-out backwards; }
+  .opt:hover { border-color:var(--accent); background:#fafafa; }
+  .opt:active { transform:scale(.98); }
+  .opt .k { display:inline-block; width:24px; height:24px; line-height:24px; text-align:center; border-radius:6px; background:#f0f1f4; font-size:13px; font-weight:800; margin-right:6px; color:#555; }
+
+  /* ===== overlays ===== */
+  .overlay { position:absolute; inset:0; z-index:20; overflow-y:auto; animation:fade .35s ease-out; color:#fff; }
+  .overlay .inner { min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:36px 26px; text-align:center; }
+  .overlay.dark { background:radial-gradient(120% 60% at 50% 0%, rgba(47,107,255,.18), transparent 60%), radial-gradient(100% 50% at 50% 100%, rgba(255,45,85,.14), transparent 60%), #090b14; }
+  .overlay.over { background:radial-gradient(120% 55% at 50% 0%, rgba(255,45,85,.45), transparent 65%), linear-gradient(180deg,#2a0610,#090b14 60%); }
+  .overlay.clear { background:radial-gradient(120% 55% at 50% 0%, rgba(61,220,132,.35), transparent 65%), linear-gradient(180deg,#05301a,#090b14 60%); }
+  .overlay h1 { font-size:30px; line-height:1.25; margin-bottom:10px; letter-spacing:-.5px; }
+  .overlay h2 { font-size:20px; margin-bottom:8px; }
+  .overlay p { font-size:15.5px; line-height:1.65; opacity:.85; margin-bottom:6px; }
+  .overlay .eyebrow { font-size:13px; letter-spacing:1px; opacity:.75; margin-bottom:10px; }
+  .overlay .big { font-size:42px; font-weight:800; margin:4px 0 12px; font-variant-numeric:tabular-nums; }
+  .btn { margin-top:16px; font-weight:800; font-size:15px; padding:14px 28px; border-radius:14px; border:0; background:#d61f2c; color:#fff; cursor:pointer; min-width:220px; transition:transform .1s, background .2s; box-shadow:0 8px 20px rgba(0,0,0,.32); }
+  .btn:hover { background:#e52c3a; }
+  .btn:active { transform:scale(.97); }
+  .btn.ghost { background:transparent; border:1.5px solid rgba(255,255,255,.3); margin-top:10px; box-shadow:none; }
+  .btn.green { background:#1c8f57; }
+  .btn.green:hover { background:#20a061; }
+  .box { text-align:left; background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:14px; padding:14px 16px; font-size:14.5px; line-height:1.7; margin-top:12px; width:100%; }
+  .box .ttl { font-weight:800; font-size:14.5px; margin-bottom:6px; display:block; }
+  .box ul { padding-left:18px; }
+  .box li { margin:3px 0; }
+  .legend span { display:inline-block; width:58px; font-weight:800; }
+  .reason { background:rgba(255,77,77,.12); border:1px solid rgba(255,77,77,.35); border-radius:14px; padding:14px; font-size:15px; line-height:1.6; text-align:left; margin-top:6px; width:100%; }
+  .scale { display:flex; gap:6px; justify-content:center; margin-top:8px; }
+  .scale button { width:46px; height:46px; border-radius:12px; border:1.5px solid rgba(255,255,255,.2); background:rgba(255,255,255,.04); color:#fff; font-size:16px; font-weight:800; cursor:pointer; }
+  .scale button.sel { background:#ff3b3b; border-color:#ff3b3b; }
+  .scale-cap { display:flex; justify-content:space-between; font-size:13px; opacity:.7; width:262px; margin:4px auto 0; }
+  .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:100%; margin-top:12px; }
+  .stat { background:rgba(255,255,255,.06); border-radius:12px; padding:10px 6px; }
+  .stat b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
+  .stat span { font-size:13px; opacity:.75; }
+  .bar-row { display:flex; align-items:center; gap:8px; font-size:14px; margin:5px 0; }
+  .bar-row .lbl { width:76px; flex-shrink:0; }
+  .bar-row .bar { flex:1; height:8px; background:rgba(255,255,255,.08); border-radius:4px; overflow:hidden; }
+  .bar-row .bar i { display:block; height:100%; border-radius:4px; }
+  .bar-row .v { width:30px; text-align:right; font-variant-numeric:tabular-nums; opacity:.8; }
+  .note { border-top:1px solid var(--line); padding:9px 0; font-size:14px; line-height:1.55; }
+  .note:first-of-type { border-top:0; }
+  .note .tag { font-size:12px; font-weight:800; padding:1px 6px; border-radius:4px; margin-right:4px; }
+  .note .tag.trap { background:#5a3d00; color:#ffd27a; } .note .tag.wrong { background:#5a0b0b; color:#ffb0b0; }
+  .note .mine { opacity:.6; text-decoration:line-through; }
+  .note .right { color:#8ff0bd; }
+  .dex-overlay .chip { color:rgba(255,255,255,.3); }
+
+
+  /* stage art + preview modal */
+  .stage-art { position:relative; margin:-36px -26px 18px; width:calc(100% + 52px); aspect-ratio:16/10; overflow:hidden;
+               background:radial-gradient(circle at 30% 40%, rgba(255,45,85,.35), transparent 55%), radial-gradient(circle at 75% 60%, rgba(47,107,255,.35), transparent 55%), #0b0d18; }
+  .stage-art img { width:100%; height:100%; object-fit:cover; display:block; animation:artIn 1.2s cubic-bezier(.2,.8,.2,1); }
+  .stage-art::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(9,11,20,0) 45%, #090b14 100%); }
+  @keyframes artIn { from { transform:scale(1.08); filter:brightness(.4) } to { transform:none; filter:none } }
+  .overlay.stage-intro .inner { justify-content:flex-start; }
+  .art-modal { position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(3,4,10,.72); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  .art-modal.open { display:flex; animation:fade .25s ease-out; }
+  .art-card { width:min(720px,100%); max-height:calc(100vh - 32px); overflow:auto; padding:0; background:#15171e; }
+  .art-card .stage-art::after { background:linear-gradient(180deg, rgba(21,23,30,0) 72%, #15171e 100%); }
+  .art-card .stage-art { margin:0; width:100%; aspect-ratio:16/9; border-radius:var(--radius) var(--radius) 0 0; }
+  .art-body { padding:6px 24px 24px; text-align:left; }
+  .art-body .eyebrow { font-size:14px; color:rgba(255,255,255,.72); }
+  .art-body h2 { font-size:24px; margin:6px 0 6px; letter-spacing:-.5px; }
+  .art-body p { color:rgba(255,255,255,.78); font-size:15px; line-height:1.6; }
+  .art-body .why { margin-top:10px; color:#ffb1c1; font-weight:700; }
+  .art-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+  .art-actions .btn { min-width:0; flex:1; margin-top:10px; }
+  .btn:disabled, .btn:disabled:hover { background:rgba(255,255,255,.1); color:rgba(255,255,255,.55); cursor:not-allowed; box-shadow:none; }
+  .overlay canvas.siren { display:block; width:calc(100% + 52px); height:72px; margin:-20px -26px 8px; }
+
+  /* ===== intro ===== */
+  .intro { position:fixed; inset:0; z-index:100; background:#030408; overflow:hidden; }
+  .intro-stage { position:absolute; inset:0; transition:transform .72s cubic-bezier(.7,0,.2,1), opacity .72s; }
+  .intro.entering .intro-stage { opacity:0; }
+  .intro-media { position:absolute; inset:0; transform-origin:0 0; }
+  .intro-backdrop { position:absolute; inset:-40px; background-size:cover; background-position:center; filter:blur(24px) brightness(.45); }
+  .intro-poster, .intro-video { position:absolute; display:block; object-fit:cover; user-select:none; }
+  .intro-video { opacity:0; transition:opacity .25s; }
+  .intro-video.show { opacity:1; }
+  .intro-slot { position:absolute; overflow:hidden; opacity:0; transition:opacity .5s .1s; color:#fff; display:flex; flex-direction:column;
+                background:linear-gradient(180deg, rgba(14,22,70,.35), rgba(6,10,40,.2)); }
+  .intro-slot.show { opacity:1; }
+  .intro.zoom-in .intro-slot { transition:opacity .5s 1s; }
+  .intro[data-phase=playing] .intro-slot { opacity:0; }
+  .intro-loader { position:absolute; inset:0; display:grid; place-items:center; opacity:0; pointer-events:none; transition:opacity .45s; background:#030408; }
+  .intro-loader.show { opacity:1; pointer-events:auto; }
+  .intro-loader-bg { position:absolute; inset:-40px; background-size:cover; background-position:center; filter:blur(22px) brightness(.35) saturate(1.2); transform:scale(1.05); }
+  .intro-loader-box { position:relative; width:min(420px, calc(100vw - 48px)); text-align:center; }
+  .il-eyebrow { display:none; }
+  .il-title { font-size:34px; font-weight:900; letter-spacing:-1px; margin:8px 0 18px; }
+  .il-title em { font-style:normal; color:var(--siren-red); }
+  .il-siren { display:block; width:100%; height:64px; margin-bottom:14px; }
+  .il-bar { height:26px; }
+  .il-note { margin-top:14px; font-size:12.5px; color:rgba(255,255,255,.5); }
+  .intro-skip { position:absolute; right:20px; bottom:20px; z-index:3; padding:10px 16px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.45); color:#fff; font-size:13px; font-weight:700; cursor:pointer; opacity:0; pointer-events:none; transition:opacity .3s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  .intro-skip.show { opacity:1; pointer-events:auto; }
+  /* 폰 화면 속 타이틀 */
+  .ts-status { display:flex; justify-content:space-between; padding:3.2% 7% 0; font-size:11px; font-weight:700; opacity:.85; font-family:var(--display); flex-shrink:0; }
+  .ts-scroll { flex:1; min-height:0; overflow-y:auto; padding:6% 7% 2%; scrollbar-width:none; }
+  .ts-scroll::-webkit-scrollbar { display:none; }
+  .ts-title { font-size:clamp(22px, 2.4vw, 30px); font-weight:900; letter-spacing:-.8px; line-height:1.15; margin-top:4px; }
+  .ts-title em { font-style:normal; color:#ff4d5e; }
+  .ts-scroll { display:flex; flex-direction:column; justify-content:center; }
+  .ts-msg { font-size:clamp(17px,1.7vw,21px); font-weight:800; line-height:1.4; letter-spacing:-.4px; margin-top:18px; }
+  .ts-msg b { color:#fff; font-family:var(--display); }
+  .ts-goal { font-size:13px; line-height:1.6; opacity:.75; margin-top:12px; }
+  .ts-goal b { color:#ff8aa2; font-weight:800; opacity:1; }
+  .si-rules { margin:14px auto 4px; max-width:330px; text-align:left; padding:10px 14px; border-radius:14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); font-size:14.5px; line-height:1.75; }
+  .si-rules span { display:inline-block; width:54px; font-weight:800; }
+  .overlay .callout { margin-top:12px; font-size:15px; line-height:1.6; opacity:1; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,.08); text-align:left; width:100%; }
+  .overlay .callout b { font-size:17px; }
+  @media (hover:none), (max-width:760px) { .si-rules .kb { display:none; } }
+  .si-rules .kb { opacity:.75; font-size:13px; }
+  .ts-foot { flex-shrink:0; padding:3% 7% 6%; background:linear-gradient(180deg, rgba(6,10,40,0), rgba(6,10,40,.85) 30%); }
+  .ts-foot .q { font-size:11.5px; text-align:center; opacity:.8; }
+  .ts-foot .scale { margin-top:6px; gap:5px; }
+  .ts-foot .scale button { width:auto; flex:1; height:36px; border-radius:10px; font-size:14px; }
+  .ts-foot .scale-cap { width:auto; font-size:10px; }
+  .ts-foot .btn { width:100%; min-width:0; margin-top:10px; padding:12px; font-size:14px; }
+  .ts-legal { font-size:11.5px; text-align:center; opacity:.7; margin-top:8px; }
+  .shake { animation:shake .5s; }
+  .flash { position:absolute; inset:0; background:rgba(255,0,0,.28); pointer-events:none; z-index:30; animation:fadeout .7s forwards; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+  @keyframes pop { from{opacity:0;transform:translateY(6px) scale(.97)} to{opacity:1;transform:none} }
+  @keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+  @keyframes fade { from{opacity:0} to{opacity:1} }
+  @keyframes fadeout { from{opacity:1} to{opacity:0} }
+  @keyframes blink { 0%,60%,100%{opacity:.25} 30%{opacity:1} }
+  @keyframes glow { 0%{box-shadow:0 0 0 0 rgba(255,77,77,.7)} 100%{box-shadow:0 0 0 10px rgba(255,77,77,0)} }
+  @keyframes shake { 10%,90%{transform:translateX(-2px)} 20%,80%{transform:translateX(4px)} 30%,50%,70%{transform:translateX(-7px)} 40%,60%{transform:translateX(7px)} }
+  @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+<div class="wall" aria-hidden="true"></div>
+<div class="app" id="app">
+  <div class="report-pop glass" id="reportPop" role="dialog" aria-label="실제 피해 신고처">
+    <h4>이미 돈을 보냈다면</h4>
+    <div class="r"><b>112</b>경찰 · 보이스피싱 신고·지급정지</div>
+    <div class="r"><b>1332</b>금융감독원 · 금융사기 상담</div>
+    <div class="r"><b>118</b>불법스팸·스미싱 신고</div>
+  </div>
+  <div class="sheet-dim" id="sheetDim" hidden></div>
+  <div class="sheet" id="menuSheet" role="dialog" aria-modal="true" aria-label="메뉴" hidden>
+    <div class="grab" aria-hidden="true"></div>
+    <button class="sheet-item" data-go="dex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 21V5"/><path d="M9 8h6"/></svg>위험 신호 도감<small id="sheetDexCount">0 / 20</small></button>
+    <button class="sheet-item" data-go="report" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>학습 리포트<small id="sheetReportNote">9단계 완료 후</small></button>
+    <div class="sheet-call">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>실제 피해 신고처</h3>
+      <a href="tel:112"><b>112</b>경찰 · 보이스피싱 신고·지급정지</a>
+      <a href="tel:1332"><b>1332</b>금융감독원 · 금융사기 상담</a>
+      <a href="tel:118"><b>118</b>불법스팸·스미싱 신고</a>
+    </div>
+    <button class="sheet-item" data-go="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>메시지 목록으로</button>
+  </div>
+
+  <main class="main" id="main">
+    <div class="lock-date"><span id="lockDate"></span> · <h1>사기 생존기</h1></div>
+    <div class="lock-clock" id="lockClock" aria-hidden="true"></div>
+    <div class="widgets">
+      <div class="wg wg-money glass"><span>지킨 돈</span>
+        <div class="wm"><div class="ring" id="kpiRing" aria-hidden="true"><i id="kpiPct">100%</i></div><div><b id="kpiBalance">₩3,200,000</b><small id="kpiNote">320만 원 중 한 푼도 안 뺏김</small></div></div>
+      </div>
+      <div class="wg-col">
+        <div class="wg wg-s glass"><span>방어</span><b id="kpiProg">0 / 9</b></div>
+        <div class="wg wg-s glass"><span>위험 신호</span><b id="kpiFlags">0 / 30</b></div>
+      </div>
+    </div>
+    <div class="stack-head"><h2>새 메시지 9통, <em>모두 사기입니다</em></h2><p>하나씩 열어 대화해 보세요. 잘못 답하면 320만 원이 사라집니다.</p></div>
+    <section class="scenarios" id="scenarioGrid" aria-label="사건 아홉 건"></section>
+    <div class="dock">
+      <button class="rail-btn call glass" data-go="call" aria-expanded="false" aria-controls="reportPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>신고 <b>112</b></button>
+    </div>
+    <p class="legal">게임 속 링크, 계정, 기관명은 모두 교육용 가상 설정입니다.</p>
+  </main>
+
+  <aside class="console" aria-label="채팅 훈련">
+  <div class="phone" id="phone">
+    <div class="statusbar"><span id="clock">19:30</span><span>●●● 5G ▮</span></div>
+    <div class="hud">
+      <span class="stage-tag" id="stageTag">1단계</span>
+      <div class="gauge">
+        <div class="gauge-label"><span>신뢰도 방어막</span><span id="trustNum">100</span></div>
+        <div class="gauge-bar" role="progressbar" aria-label="신뢰도" aria-valuemin="0" aria-valuemax="100" id="trustBar"><div class="gauge-fill" id="trustFill" style="width:100%"></div></div>
+      </div>
+      <span class="balance" id="balance">₩3,200,000</span>
+      <button class="dex-btn" id="dexBtn" aria-label="위험 신호 도감 열기">📖</button>
+      <button class="menu-btn" id="menuBtn" aria-label="메뉴 열기" aria-expanded="false" aria-controls="menuSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>메뉴</button>
+    </div>
+    <div class="chat-header">
+      <span class="back" aria-hidden="true">‹</span>
+      <div class="avatar" id="avatar" aria-hidden="true">?</div>
+      <div class="who"><div class="who-name" id="whoName">-</div><div class="who-status" id="whoStatus">-</div></div>
+      <span class="platform-pill" id="platformPill">-</span>
+    </div>
+    <div class="messages" id="messages" role="log" aria-live="polite"></div>
+    <div class="options" id="options"></div>
+    <div id="overlayRoot"></div>
+    <canvas class="phone-siren" id="phoneSiren" aria-hidden="true"></canvas>
+  </div>
+  </aside>
+
+  <nav class="side" id="side" aria-label="메뉴">
+    <section class="acc glass" data-acc="train">
+      <button class="acc-h" id="accTrainH" aria-expanded="false" aria-controls="accTrain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 18.5h4"/></svg><span class="acc-t">훈련</span><span class="acc-m" id="accTrainM">0 / 9 방어</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="acc-b" id="accTrain" role="region" aria-labelledby="accTrainH" inert><div><div class="acc-in" id="accTrainList"></div></div></div>
+    </section>
+    <section class="acc glass" data-acc="dex">
+      <button class="acc-h" id="accDexH" aria-expanded="false" aria-controls="accDex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 21V5"/><path d="M9 8h6"/></svg><span class="acc-t">위험 신호 도감</span><span class="acc-m" id="accDexM">0 / 20</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="acc-b" id="accDex" role="region" aria-labelledby="accDexH" inert><div><div class="acc-in"><div class="dex-list" id="accDexList"></div><p class="acc-tip" id="dexTip">대화가 끝날 때마다 찾은 위험 신호가 여기에 모입니다.</p></div></div></div>
+    </section>
+    <section class="acc glass" data-acc="report">
+      <button class="acc-h" id="accReportH" aria-expanded="false" aria-controls="accReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="acc-t">학습 리포트</span><span class="acc-m" id="accReportM">잠김</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="acc-b" id="accReport" role="region" aria-labelledby="accReportH" inert><div><div class="acc-in" id="accReportBody"></div></div></div>
+    </section>
+  </nav>
+</div>
+<div class="art-modal" id="artModal"></div>
+<script>
+/* LiquidProgress — 유리관 속 액체가 출렁이며 차오르는 진행 바 (21st.dev liquid progress에서 영감, 독자 구현) */
+(function () {
+  const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function create(el, opts = {}) {
+    const colors = opts.colors || ['#ff2d55', '#a23cff', '#2f6bff'];
+    el.classList.add('lp');
+    el.innerHTML = '';
+    const bar = document.createElement('div');
+    bar.className = 'lp-tube';
+    bar.setAttribute('role', 'progressbar');
+    bar.setAttribute('aria-valuemin', '0');
+    bar.setAttribute('aria-valuemax', '100');
+    bar.setAttribute('aria-valuenow', '0');
+    bar.setAttribute('aria-label', opts.label || '불러오는 중');
+    const cv = document.createElement('canvas');
+    const pct = document.createElement('span');
+    pct.className = 'lp-pct';
+    pct.textContent = '0%';
+    bar.appendChild(cv);
+    el.appendChild(bar);
+    el.appendChild(pct);
+
+    // 기본 스타일 (페이지가 덮어쓸 수 있도록 :where로 낮은 우선순위)
+    if (!document.getElementById('lp-style')) {
+      const st = document.createElement('style');
+      st.id = 'lp-style';
+      st.textContent = `
+:where(.lp){display:flex;align-items:center;gap:14px;width:100%}
+:where(.lp-tube){position:relative;flex:1;height:100%;min-height:18px;border-radius:999px;overflow:hidden;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.6),inset 0 -1px 0 rgba(255,255,255,.06),0 0 24px rgba(47,107,255,.15)}
+:where(.lp-tube)::after{content:'';position:absolute;left:8px;right:8px;top:3px;height:30%;border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0));pointer-events:none}
+.lp-tube>canvas{position:absolute!important;inset:0;width:100%!important;height:100%!important;margin:0!important;display:block}
+:where(.lp-pct){font:700 13px/1 'Space Grotesk',system-ui,sans-serif;color:#fff;min-width:3.2em;text-align:right;font-variant-numeric:tabular-nums}`;
+      document.head.appendChild(st);
+    }
+
+    let target = 0, cur = 0, t = 0, raf = 0, alive = true;
+    const ctx = cv.getContext('2d');
+
+    function size() {
+      const r = bar.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = Math.max(1, Math.round(r.width * dpr));
+      cv.height = Math.max(1, Math.round(r.height * dpr));
+    }
+
+    function draw() {
+      const w = cv.width, h = cv.height;
+      ctx.clearRect(0, 0, w, h);
+      const fillW = w * cur;
+      if (fillW <= 0.5) return;
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      colors.forEach((c, i) => g.addColorStop(i / (colors.length - 1), c));
+      // 액체 앞쪽 경계가 세로 사인파로 출렁인다 (두 겹)
+      const amp = reduce() ? 0 : Math.min(h * 0.35, 10);
+      for (let layer = 0; layer < 2; layer++) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        const ph = t * (layer ? 2.3 : 3.1) + layer * 1.7;
+        const steps = 24;
+        for (let i = 0; i <= steps; i++) {
+          const y = (h * i) / steps;
+          const x = fillW + Math.sin(ph + (i / steps) * Math.PI * 2) * amp * (layer ? 0.6 : 1);
+          ctx.lineTo(Math.max(0, x), y);
+        }
+        ctx.lineTo(0, h);
+        ctx.closePath();
+        ctx.globalAlpha = layer ? 1 : 0.45;
+        ctx.fillStyle = g;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // 기포
+      if (!reduce()) {
+        ctx.fillStyle = 'rgba(255,255,255,.35)';
+        for (let i = 0; i < 6; i++) {
+          const bx = ((i * 97 + t * 40 * (1 + i % 3)) % Math.max(fillW, 1));
+          const by = h * (0.3 + 0.5 * ((Math.sin(t * 2 + i) + 1) / 2));
+          ctx.beginPath(); ctx.arc(bx, by, h * 0.06 + (i % 2), 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    }
+
+    let last = performance.now();
+    function frame(now) {
+      if (!alive) return;
+      const dt = Math.min(0.1, Math.max(0, ((now || performance.now()) - last) / 1000));
+      last = now || performance.now();
+      t += dt;
+      // 시간 기반 감쇠(τ=0.15s): 프레임 속도와 무관하게 약 1초 안에 목표에 도달
+      cur += (target - cur) * (reduce() ? 1 : 1 - Math.exp(-dt / 0.15));
+      if (Math.abs(target - cur) < 0.005) cur = target;
+      const v = Math.round(cur * 100);
+      bar.setAttribute('aria-valuenow', String(v));
+      pct.textContent = v + '%';
+      draw();
+      raf = requestAnimationFrame(frame);
+    }
+
+    size();
+    const ro = window.ResizeObserver ? new ResizeObserver(size) : null;
+    ro && ro.observe(bar);
+    raf = requestAnimationFrame(frame);
+
+    return {
+      set(p) { target = Math.max(0, Math.min(1, Number(p) || 0)); },
+      destroy() { alive = false; cancelAnimationFrame(raf); ro && ro.disconnect(); el.innerHTML = ''; el.classList.remove('lp'); }
+    };
+  }
+
+  window.LiquidProgress = { create };
+})();
+
+</script>
+<script>
+/* SirenWave — 빨강·파랑 사인파가 겹쳐 흐르는 사이렌 파형 (21st.dev siri-wave에서 영감, 독자 구현) */
+(function () {
+  const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function create(canvas, opts = {}) {
+    const colors = opts.colors || ['#ff2d55', '#2f6bff', '#ff2d55', '#2f6bff'];
+    const base = opts.amplitude ?? 0.55;
+    const ctx = canvas.getContext('2d');
+    // 겹별 속도·주파수·위상 (진폭과 위상이 서로 다른 4겹)
+    const curves = colors.map((c, i) => ({ c, f: 1.6 + i * 0.55, s: 0.9 + i * 0.35, p: i * 1.3, a: 1 - i * 0.18 }));
+    let amp = base, t = 0, raf = 0, running = false, burstUntil = 0, burstLen = 0;
+
+    function fit() {
+      const r = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (r.width && r.height) {
+        const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+        if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      }
+    }
+
+    function draw() {
+      const w = canvas.width, h = canvas.height, mid = h / 2;
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineWidth = Math.max(1.5, h * 0.03);
+      for (const k of curves) {
+        // 두 겹 사이렌 맥동: 빨강/파랑이 번갈아 강해진다
+        const pulse = 0.65 + 0.35 * Math.sin(t * 4 + (k.c === colors[0] ? 0 : Math.PI));
+        const A = mid * 0.9 * amp * k.a * pulse;
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += 2) {
+          const u = x / w;
+          const env = Math.pow(Math.sin(Math.PI * u), 2); // 양 끝으로 갈수록 0 (siri 스타일 감쇠)
+          const y = mid + Math.sin(u * Math.PI * 2 * k.f + t * k.s * 3 + k.p) * A * env;
+          x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+        }
+        ctx.strokeStyle = k.c;
+        ctx.shadowColor = k.c;
+        ctx.shadowBlur = h * 0.15;
+        ctx.globalAlpha = 0.85;
+        ctx.stroke();
+        // 채움 광택
+        ctx.lineTo(w, mid); ctx.lineTo(0, mid); ctx.closePath();
+        ctx.globalAlpha = 0.12; ctx.fillStyle = k.c; ctx.fill();
+      }
+      // 기준선 — 진폭이 0이어도 항상 보이는 중심선
+      ctx.globalAlpha = 0.9; ctx.shadowBlur = 0;
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0, 'rgba(255,45,85,0)'); g.addColorStop(0.5, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(47,107,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, mid - 1, w, 2);
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function frame(now) {
+      if (!running) return;
+      fit();
+      t += 0.016;
+      if (burstUntil) {
+        const left = burstUntil - now;
+        if (left <= 0) { burstUntil = 0; amp = base; if (opts.autoStop) { running = false; ctx.clearRect(0, 0, canvas.width, canvas.height); return; } }
+        else { const k = left / burstLen; amp = 0.15 + (1 - 0.15) * k; }
+      }
+      draw();
+      raf = requestAnimationFrame(frame);
+    }
+
+    return {
+      start() {
+        fit();
+        if (reduce()) { running = false; t = 0.6; draw(); return; }
+        if (running) return;
+        running = true; raf = requestAnimationFrame(frame);
+      },
+      stop() { running = false; cancelAnimationFrame(raf); ctx.clearRect(0, 0, canvas.width, canvas.height); },
+      burst(ms = 1200) {
+        burstLen = ms; burstUntil = performance.now() + ms; amp = 1;
+        if (reduce()) { draw(); return; }
+        if (!running) { running = true; raf = requestAnimationFrame(frame); }
+      }
+    };
+  }
+
+  window.SirenWave = { create };
+})();
+
+</script>
+<script>
+/* Intro — 로딩(liquid progress) → 뒤집힌 폰 영상 → 포스터 위 폰 화면에 타이틀 → 폰 속으로 줌인 진입
+   단계는 document.body.dataset.intro 에 기록: loading → playing → title → entered */
+(function () {
+  const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ssGet = k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
+  const ssSet = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} };
+  const SEEN = 'ss_intro_seen';
+  const IMG_W = 1920, IMG_H = 1080;
+
+  let safety = 0, cfg = null, root, stage, media, video, poster, slot, skipBtn, loaderEl, lp, siren, phase = '';
+
+  function setPhase(p) { phase = p; document.body.dataset.intro = p; if (root) root.dataset.phase = p; }
+
+  function build() {
+    root = document.createElement('div');
+    root.className = 'intro';
+    root.id = 'intro';
+    root.innerHTML = `
+      <div class="intro-stage">
+        <div class="intro-backdrop" aria-hidden="true"></div>
+        <div class="intro-media">
+          <img class="intro-poster" alt="" draggable="false">
+          <video class="intro-video" muted playsinline preload="auto" aria-hidden="true"></video>
+        </div>
+        <div class="intro-slot" id="introSlot"></div>
+      </div>
+      <div class="intro-loader" aria-live="polite">
+        <div class="intro-loader-bg"></div>
+        <div class="intro-loader-box">
+          <div class="il-eyebrow">INCOMING · 2026 FRAUD DEFENSE</div>
+          <div class="il-title">사기 <em>생존기</em></div>
+          <canvas class="il-siren" aria-hidden="true"></canvas>
+          <div class="il-bar"></div>
+          <div class="il-note">수상한 메시지를 수신하는 중…</div>
+        </div>
+      </div>
+      <button class="intro-skip" type="button">건너뛰기 ›</button>`;
+    document.body.appendChild(root);
+    stage = root.querySelector('.intro-stage');
+    video = root.querySelector('.intro-video');
+    poster = root.querySelector('.intro-poster');
+    media = root.querySelector('.intro-media');
+    slot = root.querySelector('.intro-slot');
+    skipBtn = root.querySelector('.intro-skip');
+    loaderEl = root.querySelector('.intro-loader');
+    skipBtn.onclick = () => toTitle();
+    window.addEventListener('resize', layout);
+  }
+
+  // 폰 화면 네 모서리(이미지 기준 0~1, 왼위·오위·오아래·왼아래). 없으면 사각형 phoneRect 로 만든다
+  function quadOf(c) {
+    if (c.phoneQuad) return c.phoneQuad;
+    const r = c.phoneRect;
+    return [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]];
+  }
+
+  // 단위 정사각형을 사각형 q로 옮기는 3x3 원근 변환
+  function sq2q(q) {
+    const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = q;
+    const sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3;
+    let g = 0, h = 0;
+    if (Math.abs(sx) > 1e-6 || Math.abs(sy) > 1e-6) {
+      const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2, den = dx1 * dy2 - dx2 * dy1;
+      g = (sx * dy2 - dx2 * sy) / den; h = (dx1 * sy - sx * dy1) / den;
+    }
+    return [[x1 - x0 + g * x1, x3 - x0 + h * x3, x0], [y1 - y0 + g * y1, y3 - y0 + h * y3, y0], [g, h, 1]];
+  }
+  const mul = (A, B) => A.map(r => [0, 1, 2].map(j => r[0] * B[0][j] + r[1] * B[1][j] + r[2] * B[2][j]));
+  function inv(m) {
+    const [[a, b, c], [d, e, f], [g, h, i]] = m;
+    const A = e * i - f * h, B = f * g - d * i, C = d * h - e * g, det = a * A + b * B + c * C;
+    return [[A / det, (c * h - b * i) / det, (b * f - c * e) / det],
+            [B / det, (a * i - c * g) / det, (c * d - a * f) / det],
+            [C / det, (b * g - a * h) / det, (a * e - b * d) / det]];
+  }
+  const css3 = m => `matrix3d(${m[0][0]},${m[1][0]},0,${m[2][0]},${m[0][1]},${m[1][1]},0,${m[2][1]},0,0,1,0,${m[0][2]},${m[1][2]},0,${m[2][2]})`;
+  // 사각형 from 을 사각형 to 로 옮기는 CSS matrix3d
+  const quadToQuad = (from, to) => css3(mul(sq2q(to), inv(sq2q(from))));
+
+  // object-fit: cover 를 직접 계산해 포스터·영상·슬롯을 같은 좌표계에 둔다.
+  // 타이틀 단계(zoom 0→1)에서는 기울어진 폰 화면이 화면 가운데에 똑바로 선 직사각형이 되도록 장면 전체를 원근 보정하며 다가간다
+  let zoom = 0, zoomRaf = 0;
+  function layout() {
+    if (!root) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const q = quadOf(cfg);
+    const xs = q.map(p => p[0]), ys = q.map(p => p[1]);
+    const qx = Math.min(...xs), qy = Math.min(...ys), qw = Math.max(...xs) - qx, qh = Math.max(...ys) - qy;
+    const k = Math.max(vw / IMG_W, vh / IMG_H);
+    const w = IMG_W * k, h = IMG_H * k;
+    // 잘리는 방향에서는 이미지 중앙이 아니라 폰 화면 중심을 뷰포트 중앙에 맞춘다(이미지 밖이 보이지 않게 범위 제한)
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    const ox = clamp(vw / 2 - (qx + qw / 2) * w, vw - w, 0);
+    const oy = clamp(vh / 2 - (qy + qh / 2) * h, vh - h, 0);
+    for (const el of [poster, video]) Object.assign(el.style, { width: w + 'px', height: h + 'px', left: ox + 'px', top: oy + 'px' });
+    const pts = q.map(([x, y]) => [ox + x * w, oy + y * h]);
+    const dist = (p, r) => Math.hypot(p[0] - r[0], p[1] - r[1]);
+    const sw = (dist(pts[0], pts[1]) + dist(pts[3], pts[2])) / 2, sh = (dist(pts[0], pts[3]) + dist(pts[1], pts[2])) / 2;
+    // 목표: 화면 높이의 80%(폭이 좁으면 폭의 92%)인 똑바른 직사각형, 뷰포트 가운데
+    const asp = sw / sh, th = Math.min(0.8 * vh, 0.92 * vw / asp), tw = th * asp;
+    const L = (vw - tw) / 2, T = (vh - th) / 2;
+    const target = [[L, T], [L + tw, T], [L + tw, T + th], [L, T + th]];
+    const e = zoom < 0.5 ? 4 * zoom ** 3 : 1 - (-2 * zoom + 2) ** 3 / 2;   // easeInOutCubic
+    const cur = pts.map((p, i) => [p[0] + (target[i][0] - p[0]) * e, p[1] + (target[i][1] - p[1]) * e]);
+    media.style.transform = e > 0 ? quadToQuad(pts, cur) : '';
+    // 타이틀은 최종 크기(tw x th)로 그려 두고 지금 모서리(cur)로 옮긴다. 원본 화면이 작아도 글자가 확대되지 않는다
+    const unit = [[0, 0], [tw, 0], [tw, th], [0, th]];
+    const rr = (cfg.phoneRect && cfg.phoneRect.r) || 0.1;
+    Object.assign(slot.style, {
+      left: '0px', top: '0px', width: tw + 'px', height: th + 'px',
+      transformOrigin: '0 0', transform: quadToQuad(unit, cur),
+      borderRadius: (rr * tw) + 'px'
+    });
+  }
+
+  // 타이틀로 넘어갈 때 1.1초 동안 폰 쪽으로 다가가며 화면을 똑바로 세운다
+  function zoomIn() {
+    cancelAnimationFrame(zoomRaf);
+    if (reduce()) { zoom = 1; layout(); return; }
+    const t0 = performance.now(), D = 1100;
+    const tick = now => { zoom = Math.min(1, (now - t0) / D); layout(); if (zoom < 1) zoomRaf = requestAnimationFrame(tick); };
+    zoom = 0; layout();
+    zoomRaf = requestAnimationFrame(tick);
+  }
+
+  function setPoster() {
+    poster.src = cfg.poster;
+    root.querySelector('.intro-backdrop').style.backgroundImage = `url("${cfg.poster}")`;
+  }
+
+  function loadImg(src) {
+    return new Promise(res => { if (!src) return res(false); const i = new Image(); i.onload = () => res(true); i.onerror = () => res(false); i.src = src; });
+  }
+
+  async function runLoading(skipVideo) {
+    setPhase('loading');
+    loaderEl.classList.add('show');
+    lp = window.LiquidProgress.create(root.querySelector('.il-bar'), { label: '인트로 불러오는 중' });
+    siren = window.SirenWave.create(root.querySelector('.il-siren'), { amplitude: 0.45 });
+    siren.start();
+    let p = 0;
+    const add = v => { p += v; lp.set(p); };
+    const backBg = root.querySelector('.intro-loader-bg');
+    const posterP = loadImg(cfg.poster).then(ok => { if (ok) setPoster(); add(0.2); });
+    const backP = loadImg(cfg.back).then(ok => { backBg.style.backgroundImage = `url("${ok ? cfg.back : cfg.poster}")`; add(0.2); });
+    let videoOk = false;
+    const videoP = skipVideo ? Promise.resolve(add(0.6)) : new Promise(res => {
+      const done = ok => { videoOk = ok; res(); };
+      video.addEventListener('canplaythrough', () => done(true), { once: true });
+      video.addEventListener('error', () => done(false), { once: true });
+      video.src = cfg.video;
+      video.load();
+    }).then(() => add(0.6));
+    const timeout = new Promise(res => setTimeout(res, 6000));
+    await Promise.race([Promise.all([posterP, backP, videoP]), timeout]);
+    lp.set(1);
+    await new Promise(r => setTimeout(r, 650));
+    return videoOk;
+  }
+
+  function hideLoader() {
+    loaderEl.classList.remove('show');
+    setTimeout(() => { siren && siren.stop(); lp && lp.destroy(); siren = lp = null; }, 500);
+  }
+
+  function play() {
+    setPhase('playing');
+    hideLoader();
+    video.classList.add('show');
+    skipBtn.classList.add('show');
+    // 재생 중일 때만 타이틀로: 건너뛰기·진입 이후에 늦게 도착한 ended/타이머가 게임 위로 타이틀을 다시 띄우지 않게 한다
+    const finish = () => { if (phase === 'playing') toTitle(); };
+    video.addEventListener('ended', finish, { once: true });
+    video.addEventListener('error', finish, { once: true });
+    const pr = video.play();
+    if (pr && pr.catch) pr.catch(finish);
+    safety = setTimeout(finish, ((video.duration && isFinite(video.duration)) ? video.duration * 1000 : 8000) + 2000);
+  }
+
+  function toTitle() {
+    if (phase === 'title') return;
+    clearTimeout(safety); safety = 0;
+    ssSet(SEEN, '1');
+    hideLoader();
+    skipBtn.classList.remove('show');
+    try { video.pause(); } catch (e) {}
+    video.classList.remove('show');
+    root.classList.remove('gone', 'entering');
+    root.style.display = '';
+    stage.style.transform = '';
+    root.classList.add('zoom-in');
+    zoomIn();
+    setPhase('title');
+    slot.innerHTML = '';
+    cfg.onTitle(slot);
+    slot.classList.add('show');
+  }
+
+  const Intro = {
+    boot(opts) {
+      cfg = opts;
+      build();
+      layout();
+      const q = new URLSearchParams(location.search);
+      // 비교·미리보기용: 영상마다 마지막 장면(포스터)과 폰 화면 모서리가 다르므로 함께 바꿀 수 있게 한다
+      if (q.get('introvideo')) cfg.video = q.get('introvideo');
+      if (q.get('introposter')) cfg.poster = q.get('introposter');
+      if (q.get('introquad')) { try { cfg.phoneQuad = JSON.parse(q.get('introquad')); } catch (e) {} }
+      layout();
+      const skipVideo = q.has('nointro') || reduce() || ssGet(SEEN) === '1';
+      if (q.has('nointro')) {               // 테스트·바로가기용: 로딩도 건너뜀
+        setPoster();
+        toTitle();
+        return;
+      }
+      runLoading(skipVideo).then(ok => (ok && !skipVideo ? play() : toTitle()));
+    },
+    enter() {
+      if (phase !== 'title') return;
+      const r = slot.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const k = Math.max(window.innerWidth / r.width, window.innerHeight / r.height) * 1.05;
+      const finish = () => {
+        root.classList.add('gone');
+        root.style.display = 'none';
+        setPhase('entered');
+        cfg.onEnter();
+      };
+      if (reduce()) { finish(); return; }
+      stage.style.transformOrigin = `${cx}px ${cy}px`;
+      root.classList.add('entering');
+      requestAnimationFrame(() => { stage.style.transform = `scale(${k})`; });
+      setTimeout(finish, 720);
+    },
+    showTitleAgain() {
+      if (!root) return;
+      phase = '';
+      toTitle();
+    }
+  };
+
+  window.Intro = Intro;
+})();
+
+</script>
+
+<script src="js/api.js"></script>
+<script>
+/* ---------- 학습 데이터: 서버(/api/content)에서 받아 온다. 원본은 content/*.json ----------
+   선택지에는 정답 여부(type)와 피드백이 없다. 답을 고르면 서버가 판정한다. */
+let SCENARIOS = [], FLAGS = [], LESSONS = {};
+async function loadContent() {
+  const c = await ScamApi.content();
+  SCENARIOS = c.scenarios;
+  FLAGS = c.flags.map(f => ({ ...f, re: new RegExp(f.pattern, f.pattern_flags) }));
+  LESSONS = Object.fromEntries(c.scenarios.map(s => [s.stage_id, s.lessons]));
+}
+
+const THEMES = {
+  Karrot:    { accent:'#ff6f0f', bubbleOut:'#ff6f0f', outText:'#fff', header:'#fff', headerText:'#111', chatBg:'#fff', avatar:'#ff9a4d', icon:'🥕', title:'중고거래' },
+  SMS:       { accent:'#34c759', bubbleOut:'#34c759', outText:'#fff', header:'#f7f7f8', headerText:'#111', chatBg:'#fff', avatar:'#9aa0a6', icon:'✉️', title:'문자 스미싱' },
+  KakaoTalk: { accent:'#fee500', bubbleOut:'#fee500', outText:'#191919', header:'#bacee0', headerText:'#111', chatBg:'#bacee0', avatar:'#4a5a73', icon:'⚖️', title:'수사기관 사칭' },
+  Instagram: { accent:'#d62976', bubbleOut:'linear-gradient(135deg,#7b2ff7,#d62976,#fa7e1e)', outText:'#fff', header:'#fff', headerText:'#111', chatBg:'#fff', avatar:'linear-gradient(135deg,#feda75,#d62976,#4f5bd5)', icon:'📸', title:'로맨스 스캠' },
+  Telegram:  { accent:'#2aabee', bubbleOut:'#effdde', outText:'#111', header:'#517da2', headerText:'#fff', chatBg:'#cfdcc6', avatar:'#2aabee', icon:'💼', title:'취업 사기' }
+};
+
+// 기본값. 세션을 만들면 서버 규칙(rules/v1.json) 값으로 바뀐다
+let START_BALANCE = 3200000;
+let TRAP_PENALTY = 25;
+function applyRules(r) { if (!r) return; START_BALANCE = r.start_balance; TRAP_PENALTY = r.trap_penalty; }
+
+/* ---------- 상태 ---------- */
+// sessionId·attemptId: 서버 기록 id. 점수·오답 노트는 서버가 계산하고, 여기 stats·stageMiss는 화면 표시용이다
+let S;
+function freshState() {
+  return { stageIdx:0, turnIdx:0, trust:100, balance:START_BALANCE, busy:false, lastBubble:null, hintUsed:false,
+           cleared:{}, mistakes:[], stats:{ correct:0, trap:0, wrong:0, hints:0, retries:0 },
+           stageMiss:Object.fromEntries(SCENARIOS.map(s => [s.stage_id, 0])), found:new Set(), pre:null, post:null, replay:null,
+           sessionId:null, attemptId:null };
+}
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const won = n => '₩' + n.toLocaleString('ko-KR');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const stage = () => SCENARIOS[S.stageIdx];
+const themeOf = s => Object.assign({}, THEMES[s.platform] || THEMES.SMS, s.title ? { title:s.title } : {}, s.icon ? { icon:s.icon } : {});
+const theme = () => themeOf(stage());
+const KNUM = ['','한','두','세','네','다섯','여섯','일곱','여덟','아홉','열'];
+const nWord = () => KNUM[SCENARIOS.length] || SCENARIOS.length;
+
+function now() { const d = new Date(); return `${d.getHours() < 12 ? '오전' : '오후'} ${((d.getHours()+11)%12)+1}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function tick() { const d=new Date(), hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; $('clock').textContent = hm;
+  const lc = $('lockClock'); if (lc) { lc.textContent = `${((d.getHours()+11)%12)+1}:${String(d.getMinutes()).padStart(2,'0')}`; $('lockDate').textContent = `${d.getMonth()+1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일`; } }
+tick(); setInterval(tick, 10000);
+
+/* ---------- 메시지 포맷 + 위험 신호 마킹 ---------- */
+function formatMsg(text) {
+  let h = esc(text);
+  h = h.replace(/\[(이미지|사진): ([^\]]+)\]/g, (_, t, n) => `<span class="img-attach">🖼 ${n}</span>`);
+  const found = [];
+  // 링크 먼저
+  const linkFlag = FLAGS[0];
+  h = h.replace(linkFlag.re, m => { found.push('link'); return `<span class="link flag" data-flag="link" title="${linkFlag.label}">${m}</span>`; });
+  // 나머지는 태그 밖 텍스트에만 적용
+  for (const f of FLAGS.slice(1)) {
+    h = h.split(/(<[^>]+>)/).map(part => part.startsWith('<') ? part : part.replace(f.re, m => { found.push(f.id); return `<span class="flag" data-flag="${f.id}" title="위험 신호: ${f.label}">${m}</span>`; })).join('');
+  }
+  return { html:h, flags:[...new Set(found)] };
+}
+
+/* ---------- 테마 / HUD / 사이드 ---------- */
+function applyTheme(platform) {
+  const t = THEMES[platform] || THEMES.SMS, r = $('phone').style; // 플랫폼 색은 폰 안에서만
+  r.setProperty('--accent', t.accent); r.setProperty('--bubble-out', t.bubbleOut); r.setProperty('--out-text', t.outText);
+  r.setProperty('--header', t.header); r.setProperty('--header-text', t.headerText); r.setProperty('--chat-bg', t.chatBg); r.setProperty('--bg', t.chatBg);
+  $('avatar').style.background = t.avatar; $('avatar').textContent = t.icon; $('platformPill').textContent = platform;
+}
+
+function updateHud() {
+  $('stageTag').textContent = `${S.stageIdx + 1}단계`;
+  $('trustNum').textContent = S.trust;
+  $('trustBar').setAttribute('aria-valuenow', S.trust);
+  const f = $('trustFill');
+  f.style.width = S.trust + '%';
+  f.style.background = S.trust > 60 ? 'linear-gradient(90deg,#3ddc84,#a6f36b)' : S.trust > 30 ? 'linear-gradient(90deg,#ffb020,#ffd560)' : 'linear-gradient(90deg,#ff3b3b,#ff7a7a)';
+  const b = $('balance'); b.textContent = won(S.balance); b.classList.toggle('zero', S.balance === 0);
+  renderSide();
+}
+
+function renderSide() {
+  renderScenarioGrid();
+  const cleared = Object.keys(S.cleared).length;
+  const pct = Math.round(S.balance / START_BALANCE * 100);
+  $('kpiBalance').textContent = won(S.balance);
+  $('kpiPct').textContent = pct + '%';
+  $('kpiRing').style.setProperty('--p', pct);
+  $('kpiRing').style.setProperty('--c', pct > 60 ? '#7fe3a8' : pct > 30 ? '#ffc24d' : '#ff6b78');
+  $('kpiNote').textContent = pct === 100 ? '320만 원 중 한 푼도 안 뺏김' : pct === 0 ? '320만 원을 모두 잃었습니다' : `320만 원 중 ${Math.round(S.balance / 10000)}만 원 지킴`;
+  $('kpiProg').textContent = `${cleared} / ${SCENARIOS.length}`;
+  $('kpiFlags').textContent = `${S.found.size} / ${FLAGS.length}`;
+  reportReady = cleared === SCENARIOS.length;
+  renderSideMenu(cleared);
+}
+
+/* ---------- 오른쪽 메뉴(아코디언) ---------- */
+let reportReady = false;
+function renderSideMenu(cleared) {
+  if (!$('side')) return;
+  const n = SCENARIOS.length;
+  $('accTrainM').textContent = `${cleared} / ${n} 방어`;
+  $('accDexM').textContent = `${S.found.size} / ${FLAGS.length}`;
+  $('accReportM').textContent = reportReady ? '열림' : '잠김';
+  const label = { done:'방어 성공', now:'지금', locked:'잠김', open:'도전 가능', replay:'다시 하는 중' };
+  $('accTrainList').innerHTML = SCENARIOS.map((s, i) => {
+    const st = stageState(i), [ic, col] = NOTI[s.platform] || ['?', '#666'], c = S.cleared[s.stage_id];
+    const txt = st === 'done' && c ? `방어 · ${c.trust}점` : label[st];
+    return `<button class="acc-row" data-idx="${i}"><span class="ic" style="background:${col}" aria-hidden="true">${ic}</span><span class="nm"><small>${s.stage_id}단계</small>${themeOf(s).title}</span><span class="st ${st === 'done' ? 'done' : st === 'now' || st === 'replay' ? 'now' : ''}">${txt}</span></button>`;
+  }).join('');
+  $('accTrainList').querySelectorAll('.acc-row').forEach(b => b.onclick = () => document.querySelector(`#scenarioGrid .scn[data-idx="${b.dataset.idx}"]`)?.click());
+  const tip = $('dexTip').innerHTML;
+  renderDex($('accDexList'));
+  if (!S.found.size) $('dexTip').textContent = '대화가 끝날 때마다 찾은 위험 신호가 여기에 모입니다.';
+  else if (!tip || tip.startsWith('대화가')) $('dexTip').textContent = '칩을 누르면 왜 위험한지 알려 드려요.';
+  if (reportReady) {
+    const ids = SCENARIOS.map(s => s.stage_id), avg = Math.round(ids.reduce((a, id) => a + S.cleared[id].trust, 0) / ids.length);
+    $('accReportBody').innerHTML = `<div class="acc-stat"><span>평균 신뢰도</span><b>${avg}점</b></div><div class="acc-stat"><span>지킨 돈</span><b>${won(S.balance)}</b></div><div class="acc-stat"><span>찾은 위험 신호</span><b>${S.found.size} / ${FLAGS.length}</b></div><button class="acc-go" id="accReportGo">리포트 열기</button>`;
+    $('accReportGo').onclick = openReport;
+  } else {
+    $('accReportBody').innerHTML = `<div class="acc-dots" aria-hidden="true">${SCENARIOS.map(s => `<i class="${S.cleared[s.stage_id] ? 'on' : ''}"></i>`).join('')}</div><p>${nWord()} 단계를 모두 막아 내면 열립니다. 지금까지 <b>${cleared}단계</b>를 막았어요.</p>`;
+  }
+}
+function openReport() {
+  if (!reportReady || $('overlayRoot').innerHTML) return;
+  focusPhone(); S.post == null ? showPostCheck() : showReport();
+}
+document.querySelectorAll('.acc-h').forEach(h => h.addEventListener('click', () => {
+  const acc = h.closest('.acc'), open = !acc.classList.contains('open');
+  document.querySelectorAll('.acc').forEach(a => {
+    const on = a === acc && open;
+    a.classList.toggle('open', on);
+    a.querySelector('.acc-h').setAttribute('aria-expanded', on);
+    a.querySelector('.acc-b').inert = !on;
+  });
+}));
+
+
+function renderDex(el, newIds = []) {
+  el.innerHTML = FLAGS.map(f => {
+    const on = S.found.has(f.id);
+    return `<span class="chip ${on ? 'on' : ''} ${newIds.includes(f.id) ? 'new' : ''}" data-id="${f.id}" ${on ? `title="${esc(f.why)}" tabindex="0"` : ''}>${on ? f.label : '???'}</span>`;
+  }).join('');
+  el.querySelectorAll('.chip.on').forEach(c => {
+    const f = FLAGS.find(x => x.id === c.dataset.id);
+    const show = () => { const tip = $('dexTip'); if (tip) tip.innerHTML = `<b style="color:#ffb3b3">${f.label}</b> · ${esc(f.why)}`; };
+    c.onmouseenter = show; c.onfocus = show; c.onclick = show;
+  });
+}
+
+/* ---------- 채팅 ---------- */
+function scrollDown() { const m = $('messages'); m.scrollTop = m.scrollHeight; }
+
+function addBubble(dir, html) {
+  const t = theme(), row = document.createElement('div');
+  row.className = 'row ' + dir;
+  row.innerHTML = dir === 'in'
+    ? `<div class="mini" style="background:${t.avatar}" aria-hidden="true">${t.icon}</div><div class="bubble">${html}</div><span class="time">${now()}</span>`
+    : `<span class="time">${now()}</span><div class="bubble">${html}</div>`;
+  $('messages').appendChild(row); scrollDown();
+  return row.querySelector('.bubble');
+}
+
+function addSys(kind, title, html) {
+  const d = document.createElement('div');
+  d.className = 'sys ' + kind;
+  d.innerHTML = (title ? `<b>${title}</b>` : '') + html;
+  $('messages').appendChild(d); scrollDown();
+}
+
+async function scammerSays(text) {
+  const t = theme(), row = document.createElement('div');
+  row.className = 'row in';
+  row.innerHTML = `<div class="mini" style="background:${t.avatar}">${t.icon}</div><div class="bubble typing" aria-label="입력 중"><span></span><span></span><span></span></div>`;
+  $('messages').appendChild(row); scrollDown();
+  await sleep(Math.min(700 + text.length * 16, 2200));
+  row.remove();
+  const { html, flags } = formatMsg(text);
+  const b = addBubble('in', html);
+  S.lastBubble = { el:b, flags };
+}
+
+function revealFlags(silent) {
+  const lb = S.lastBubble;
+  if (!lb || lb.el.classList.contains('revealed')) return;
+  lb.el.classList.add('revealed');
+  if (!lb.flags.length) return;
+  const newIds = lb.flags.filter(id => !S.found.has(id));
+  lb.flags.forEach(id => S.found.add(id));
+  if (!silent) {
+    const tags = lb.flags.map(id => `<span>${FLAGS.find(f => f.id === id).label}</span>`).join('');
+    addSys('flags', `이 메시지의 위험 신호 ${lb.flags.length}개${newIds.length ? ` · 도감 +${newIds.length}` : ''}`, `<div class="tags">${tags}</div>`);
+  }
+}
+
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+let currentOpts = [];
+function showOptions(turn) {
+  const box = $('options'), dark = theme().headerText === '#fff';
+  S.hintUsed = false;
+  box.innerHTML = `<div class="opt-head ${dark ? 'dark' : ''}"><span>대화 ${turn.turn} / ${stage().turns.length} · 어떻게 대응할까요?</span><button class="hint-btn" id="hintBtn" title="이 메시지의 위험 신호를 미리 표시합니다"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>위험 신호 보기</button></div>`;
+  currentOpts = shuffle(turn.options);
+  currentOpts.forEach((o, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.style.animationDelay = (i * 0.07) + 's';
+    b.innerHTML = `<span class="k">${i + 1}</span>${esc(o.text)}`;
+    b.onclick = () => choose(o, turn);
+    box.appendChild(b);
+  });
+  $('hintBtn').onclick = () => {
+    if (!S.lastBubble.flags.length) { addSys('info', '', '이 메시지에는 표시할 위험 신호가 없습니다. 맥락으로 판단해 보세요.'); }
+    S.stats.hints++; S.hintUsed = true; revealFlags(false); $('hintBtn').disabled = true;
+  };
+  scrollDown();
+}
+
+document.addEventListener('keydown', e => {
+  if (S && !S.busy && !$('overlayRoot').innerHTML && !$('artModal').classList.contains('open') && ['1','2','3'].includes(e.key) && currentOpts.length) {
+    const btns = document.querySelectorAll('.opt'); const b = btns[+e.key - 1]; if (b) b.click();
+  }
+});
+
+function clearOptions(msg) { currentOpts = []; $('options').innerHTML = msg ? `<div class="opt-head"><span>${msg}</span></div>` : ''; }
+
+let _phoneSiren = null;
+const phoneSiren = () => _phoneSiren || (_phoneSiren = SirenWave.create($('phoneSiren'), { amplitude:0, autoStop:true }));
+function shakePhone(red) {
+  const p = $('phone'); p.classList.add('shake'); setTimeout(() => p.classList.remove('shake'), 500);
+  if (red) { phoneSiren().burst(1200); }
+  if (red) { const f = document.createElement('div'); f.className = 'flash'; p.appendChild(f); setTimeout(() => f.remove(), 700); }
+}
+
+let sirenTimer = 0;
+function flashSiren() {
+  const c = document.querySelector('.console'); if (!c) return;
+  c.classList.add('siren-on'); clearTimeout(sirenTimer);
+  sirenTimer = setTimeout(() => c.classList.remove('siren-on'), 3000);
+}
+
+async function choose(opt, turn) {
+  if (S.busy) return;
+  S.busy = true;
+  clearOptions('');
+  const bubble = /^\(.*\)$/.test(opt.text.trim());
+  if (bubble) addSys('info', '', '🎬 ' + esc(opt.text.replace(/^\(|\)$/g, '')));
+  else addBubble('out', esc(opt.text));
+
+  // 판정은 서버가 한다. 말풍선 연출 시간(550ms)과 요청을 동시에 진행한다
+  let r;
+  try {
+    [r] = await Promise.all([ScamApi.answer(S.attemptId, turn.turn_id, opt.option_id, S.hintUsed), sleep(550)]);
+  } catch (e) {
+    $('messages').lastElementChild?.remove();   // 방금 보낸 내 말풍선을 거둔다
+    if (e.status === 409) {                       // 서버 기록과 어긋남(다른 탭에서 진행 등) → 이 사건을 새로 시작
+      addSys('info', '', '진행 상황이 서버와 어긋나 이 사건을 처음부터 다시 시작합니다.');
+      await sleep(1200); return startStage(S.stageIdx, !!S.replay);
+    }
+    addSys('info', '', '서버에 연결하지 못했습니다. 다시 골라 주세요.');
+    S.busy = false; showOptions(turn); return;
+  }
+
+  S.stats[r.type]++;
+  S.trust = r.trust;
+  if (r.type === 'correct') {
+    addSys('correct', '✅ 방어 성공', esc(r.feedback));
+    await sleep(450); revealFlags(S.hintUsed);
+    await sleep(900);
+  } else if (r.type === 'trap') {
+    S.stageMiss[stage().stage_id]++;
+    updateHud(); shakePhone(false); flashSiren();
+    addSys('trap', `⚠️ 빈틈 노출 (신뢰도 ${r.trust_delta})`, esc(r.feedback));
+    await sleep(450); revealFlags(S.hintUsed);
+    await sleep(1200);
+  } else {
+    S.stageMiss[stage().stage_id]++;
+    shakePhone(true); flashSiren();
+    addSys('wrong', '❌ 치명적 실수', esc(r.feedback));
+    await sleep(450); revealFlags(S.hintUsed);
+    await sleep(1500);
+  }
+
+  if (r.status === 'failed') return gameOver(r.game_over_reason);
+  if (r.status === 'cleared') return stageClear();
+  nextTurn();
+}
+
+async function nextTurn() {
+  S.turnIdx++;
+  if (S.turnIdx >= stage().turns.length) return stageClear();
+  await playTurn();
+}
+
+async function playTurn() {
+  S.busy = true;
+  clearOptions('상대방이 입력 중...');
+  const turn = stage().turns[S.turnIdx];
+  await scammerSays(turn.scammer_msg);
+  S.busy = false;
+  showOptions(turn);
+}
+
+/* ---------- 오버레이 ---------- */
+let overSiren = null;
+function stopOverSiren() { if (overSiren) { overSiren.stop(); overSiren = null; } }
+function overlay(cls, html) { stopOverSiren(); $('dexLayer')?.remove(); $('overlayRoot').innerHTML = `<div class="overlay ${cls}"><div class="inner">${html}</div></div>`; const b = $('overlayRoot').querySelector('.btn'); if (b) b.focus({preventScroll:true}); }
+function closeOverlay() { stopOverSiren(); $('overlayRoot').innerHTML = ''; setTab('train'); }
+function setTab(go) { document.querySelectorAll('.tabbar .rail-btn').forEach(b => b.classList.toggle('on', b.dataset.go === go)); }
+const lessonBox = id => `<div class="box"><span class="ttl">이 수법, 이것만 기억하세요</span><ul>${LESSONS[id].map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+
+function animateNum(from, to, el) {
+  const start = performance.now(), dur = 1300;
+  const step = t => { const p = Math.min(1, (t - start) / dur), e = 1 - Math.pow(1 - p, 3); el.textContent = won(Math.round(from + (to - from) * e)); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+function gameOver(reason) {
+  const lost = S.balance; if (!S.replay) { S.balance = 0; updateHud(); }
+  const s = stage();
+  overlay('over', `
+    <canvas class="siren" aria-hidden="true"></canvas>
+    <div class="eyebrow">${s.stage_id}단계 · 게임 오버</div>
+    <h1>당했습니다</h1>
+    <p>${esc(s.scam_type)}</p>
+    <div class="big" id="lostNum">${won(lost)}</div>
+    <div class="reason">${esc(reason).replace(/\n/g,'<br>')}</div>
+    ${lessonBox(s.stage_id)}
+    <p class="callout">실제로 돈을 보냈다면 바로 <b>112</b>에 지급정지를 요청하고 <b>1332</b> 금융감독원에 상담하세요.</p>
+    ${S.replay ? '<p style="opacity:.75;font-size:14px">다시 해 보기라서 실제 잔고와 진행 상황은 그대로입니다.</p>' : ''}
+    <button class="btn" id="retryBtn">이 단계 다시 도전</button>
+    <button class="btn ghost" id="homeBtn">${S.replay ? '이어서 하기' : '처음으로'}</button>`);
+  overSiren = SirenWave.create($('overlayRoot').querySelector('canvas.siren'), { amplitude:.8 }); overSiren.start();
+  animateNum(lost, 0, $('lostNum'));
+  $('retryBtn').onclick = () => { if (S.replay) return startStage(S.stageIdx); S.stats.retries++; S.balance = START_BALANCE; startStage(S.stageIdx); };
+  $('homeBtn').onclick = S.replay ? afterReplay : showTitle;
+}
+
+function stageClear() {
+  const s = stage();
+  if (S.replay) {
+    const best = S.replay.best[s.stage_id], better = S.trust > best;
+    S.replay.best[s.stage_id] = Math.max(best, S.trust);
+    overlay('clear', `
+      <div class="eyebrow">${s.stage_id}단계 · 다시 해 보기</div>
+      <h1>또 막아 냈습니다</h1>
+      <p>${esc(s.scam_type)}</p>
+      <p style="margin-top:6px">이번 신뢰도 <b>${S.trust}</b> / 100 · ${better ? `최고 기록을 <b>${S.trust}</b>점으로 바꿨습니다` : `최고 기록 <b>${best}</b>점 그대로`}</p>
+      ${lessonBox(s.stage_id)}
+      <button class="btn green" id="nextBtn">이어서 하기</button>`);
+    $('nextBtn').onclick = afterReplay;
+    return;
+  }
+  S.cleared[s.stage_id] = { trust:S.trust }; renderSide();
+  const n = SCENARIOS.length, nextIdx = [...Array(n).keys()].map(k => (S.stageIdx + 1 + k) % n).find(j => !S.cleared[SCENARIOS[j].stage_id]);
+  const last = nextIdx === undefined;
+  overlay('clear', `
+    <div class="eyebrow">${s.stage_id}단계 방어 성공</div>
+    <h1>방어 성공!</h1>
+    <p>${esc(s.scam_type)}</p>
+    <p style="margin-top:6px">남은 신뢰도 <b>${S.trust}</b> / 100 · 지킨 자산 <b>${won(S.balance)}</b></p>
+    ${lessonBox(s.stage_id)}
+    <button class="btn green" id="nextBtn">${last ? '학습 리포트 보기' : '다음 단계 →'}</button>`);
+  $('nextBtn').onclick = () => last ? showPostCheck() : showStageIntro(nextIdx);
+}
+
+function scalePicker(cb) {
+  return `<div class="scale" role="radiogroup" aria-label="자신감 1~5점">${[1,2,3,4,5].map(n => `<button role="radio" aria-checked="false" data-v="${n}">${n}</button>`).join('')}</div>
+          <div class="scale-cap"><span>전혀 자신 없음</span><span>매우 자신 있음</span></div>`;
+}
+function bindScale(onPick) {
+  document.querySelectorAll('.scale button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.scale button').forEach(x => { x.classList.remove('sel'); x.setAttribute('aria-checked','false'); });
+    b.classList.add('sel'); b.setAttribute('aria-checked','true'); onPick(+b.dataset.v);
+  });
+}
+
+function showPostCheck() {
+  overlay('dark', `
+    <div class="eyebrow">사후 자가진단</div>
+    <h2>훈련을 마친 지금,<br>사기 메시지를 알아보고 대처할 자신이 있나요?</h2>
+    <p style="font-size:12.5px">시작할 때 고른 점수(${S.pre}점)와 비교해 리포트에 보여드립니다.</p>
+    ${scalePicker()}
+    <button class="btn" id="toReport" disabled style="opacity:.4">리포트 보기</button>`);
+  bindScale(v => { S.post = v; const b = $('toReport'); b.disabled = false; b.style.opacity = 1; });
+  $('toReport').onclick = async () => {
+    const b = $('toReport'); b.disabled = true; b.textContent = '리포트 만드는 중…';
+    try { showReport(await ScamApi.finish(S.sessionId, S.post)); }
+    catch (e) { b.disabled = false; b.textContent = '다시 시도'; }
+  };
+}
+
+// 리포트: 점수·등급·오답 노트는 서버(/sessions/:id/report)가 계산한 값을 그린다.
+// R을 안 넘기면 새로 받아 온다 (다시 해 보기로 최고 기록이 바뀌면 점수도 바뀌므로)
+async function showReport(R) {
+  if (!R) {
+    try { R = await ScamApi.report(S.sessionId); }
+    catch (e) {
+      overlay('dark', `<div class="eyebrow">학습 리포트</div><h2>리포트를 불러오지 못했습니다</h2>
+        <p>네트워크를 확인한 뒤 다시 시도해 주세요.</p><button class="btn" id="reportRetry">다시 시도</button>`);
+      $('reportRetry').onclick = () => showReport();
+      return;
+    }
+  }
+  const byId = id => SCENARIOS.find(s => s.stage_id === id);
+  const score = R.score;
+  const grade = [R.grade.grade, R.grade.title, R.grade.message];
+  const weak = R.weak_scenarios.map(id => themeOf(byId(id)).title);
+  const bars = R.stages.map(st => {
+    const s = byId(st.scenario_id), t = st.best_trust, c = t > 60 ? '#3ddc84' : t > 30 ? '#ffb020' : '#ff4d4d';
+    return `<div class="bar-row"><span class="lbl">${themeOf(s).title}</span><span class="bar"><i style="width:${t}%;background:${c}"></i></span><span class="v">${t}</span></div>`;
+  }).join('');
+  const { pre, post, delta } = R.confidence;
+  const notes = R.mistakes.length ? R.mistakes.map(m => `
+      <div class="note"><span class="tag ${m.type}">${m.type === 'wrong' ? '치명타' : '빈틈'}</span><b>${m.scenario_id}단계 · 대화 ${m.turn}</b><br>
+      <span class="mine">${esc(m.mine)}</span><br><span class="right">→ ${esc(m.right)}</span><br><span style="opacity:.7">${esc(m.why)}</span></div>`).join('')
+    : '<p style="font-size:13px">틀린 선택이 하나도 없습니다. 완벽해요!</p>';
+
+  overlay('clear', `
+    <div class="eyebrow">${nWord()} 단계 모두 방어 · 학습 리포트</div>
+    <div class="big" style="font-size:68px;margin:0;line-height:1">${grade[0]}</div>
+    <h2>${grade[1]}</h2>
+    <p>${grade[2]}</p>
+    <div class="stat-grid">
+      <div class="stat"><b>${score}</b><span>방어 점수</span></div>
+      <div class="stat"><b>${R.found_flags.length}<small style="font-size:12px;opacity:.6">/${R.flag_total}</small></b><span>찾은 위험 신호</span></div>
+      <div class="stat"><b>${delta >= 0 ? '+' : ''}${delta}</b><span>자신감 ${pre}→${post}</span></div>
+    </div>
+    <div class="box"><span class="ttl">유형별 방어력</span>${bars}
+      <div style="font-size:12px;opacity:.7;margin-top:6px">빈틈 ${R.stats.trap}회 · 치명타 ${R.stats.wrong}회 · 재도전 ${R.stats.retries}회 · 힌트 ${R.stats.hints}회</div>
+      ${weak.length ? `<div style="margin-top:6px;color:#ffd27a;font-size:12.5px">⚠️ 가장 취약한 유형: <b>${weak.join(', ')}</b></div>` : ''}
+    </div>
+    <div class="box"><span class="ttl">오답 노트 (${R.mistakes.length})</span>${notes}</div>
+    <div class="box"><span class="ttl">실제로 의심될 때</span><b>112</b> 경찰 · <b>1332</b> 금융감독원 · <b>118</b> 불법스팸 신고<br>
+      <span style="opacity:.7;font-size:12px">지급정지는 빠를수록 좋습니다. 송금했다면 바로 내 은행과 112에 연락하세요.</span></div>
+    <button class="btn" id="againBtn">처음부터 다시</button>`);
+  $('againBtn').onclick = showTitle;
+}
+
+const SCN_DATA = {
+  1: "assets/scenes/scene-1.webp",
+  2: "assets/scenes/scene-2.webp",
+  3: "assets/scenes/scene-3.webp",
+  4: "assets/scenes/scene-4.webp",
+  5: "assets/scenes/scene-5.webp",
+  6: "assets/scenes/scene-6.webp",
+  7: "assets/scenes/scene-7.webp",
+  8: "assets/scenes/scene-8.webp",
+  9: "assets/scenes/scene-9.webp"
+};
+const SCN_IMG = n => SCN_DATA[n];
+const artFig = (s, cls = '') => `<figure class="stage-art ${cls}"><img src="${SCN_IMG(s.stage_id)}" alt="${esc(themeOf(s).title)} 상황 그림" onerror="this.remove()"></figure>`;
+
+function showStageIntro(idx, replay = false) {
+  if (!replay && S.replay) endReplay();
+  if (!replay) S.stageIdx = idx;
+  const s = SCENARIOS[idx], t = themeOf(s);
+  overlay('dark stage-intro', `
+    ${artFig(s)}
+    <div class="eyebrow">${replay ? `${s.stage_id}단계 · 다시 해 보기` : `${s.stage_id}단계 / ${SCENARIOS.length}`}</div>
+    <h1>${t.title}</h1>
+    <p>${(NOTI[s.platform] || [,,s.platform])[2]} · ${esc(s.scam_type)}</p>
+    <p style="opacity:.75;font-size:14px">${replay ? `이미 막아 낸 사건입니다. 다시 해도 잔고와 진행 상황은 그대로이고, 더 잘하면 최고 기록만 바뀝니다.` : `${s.turns.length}번의 대화를 버텨내세요`}</p>
+    ${!replay && !S.rulesSeen && (S.rulesSeen = true) ? `<div class="si-rules"><div><span style="color:#3ddc84">방어</span>다음 대화로 넘어갑니다</div><div><span style="color:#ffb020">빈틈</span>신뢰도 -${TRAP_PENALTY}, 0이 되면 끝</div><div><span style="color:#ff4d4d">치명타</span>즉시 게임 오버, 잔고 0원</div><div class="kb">키보드 1·2·3으로도 고를 수 있어요</div></div>` : ''}
+    <button class="btn" id="goBtn">${replay ? '다시 해 보기' : '대화 시작'}</button>`);
+  $('goBtn').onclick = () => startStage(idx, replay);
+  renderSide();
+}
+
+/* ---------- 다시 해 보기: 이미 막아 낸 단계를 연습으로 다시 한다. 잔고·진행·리포트 통계는 끝나면 그대로 되돌리고, 최고 신뢰도만 남긴다 ---------- */
+const frontier = () => { const i = SCENARIOS.findIndex(s => !S.cleared[s.stage_id]); return i < 0 ? SCENARIOS.length : i; };
+function beginReplay() {
+  S.replay = { balance:S.balance, stats:{ ...S.stats }, mistakes:S.mistakes.slice(), stageMiss:{ ...S.stageMiss },
+               best:Object.fromEntries(Object.entries(S.cleared).map(([k, v]) => [k, v.trust])) };
+}
+function endReplay() {
+  const r = S.replay; if (!r) return;
+  Object.assign(S, { balance:r.balance, stats:r.stats, mistakes:r.mistakes, stageMiss:r.stageMiss, replay:null, stageIdx:frontier() });
+  Object.entries(r.best).forEach(([k, v]) => { if (S.cleared[k]) S.cleared[k].trust = v; });
+  updateHud();
+}
+function afterReplay() {
+  endReplay();
+  const f = frontier();
+  if (f < SCENARIOS.length) return showStageIntro(f);
+  S.post == null ? showPostCheck() : showReport();
+}
+
+/* ---------- 사건 파일(시나리오 카드) ---------- */
+function stageState(i) {
+  const s = SCENARIOS[i];
+  if (S.replay && i === S.stageIdx) return 'replay';
+  if (S.cleared[s.stage_id]) return 'done';
+  return i === S.stageIdx ? 'now' : 'open';
+}
+// 사건 = 잠금화면 알림. 보낸 사람과 첫 메시지를 미리 보여 주고, 아직 열리지 않은 사건은 내용을 흐리게 가린다
+const NOTI = { Karrot:['당','#ff7e36','당근'], SMS:['문','#34a35a','문자'], KakaoTalk:['카','#c9a800','카카오톡'], Instagram:['인','#c0479a','인스타그램'], Telegram:['텔','#2f8fd8','텔레그램'] };
+function renderScenarioGrid() {
+  const g = $('scenarioGrid'); if (!g) return;
+  const label = { done:'방어 성공', now:'지금', locked:'', open:'', replay:'다시 하는 중' };
+  g.innerHTML = SCENARIOS.map((s, i) => {
+    const t = themeOf(s), st = stageState(i), [ic, col, app] = NOTI[s.platform] || ['?', '#666', s.platform];
+    const when = st === 'locked' || st === 'open' ? `${s.stage_id}단계` : label[st];
+    const msg = s.turns[0].scammer_msg.replace(/\s+/g, ' ');
+    return `<button class="scn glass ${st}" data-idx="${i}" aria-label="${s.stage_id}단계 ${t.title}, ${app}, ${st === 'now' ? '진행 중' : st === 'done' ? '방어 성공, 눌러서 다시 해 보기' : st === 'replay' ? '다시 하는 중' : '도전 가능'}">
+      <span class="ic" style="background:${col}" aria-hidden="true">${ic}</span>
+      <span class="tx"><span class="who">${esc(s.scammer_profile.name)}<span>${app} · ${t.title}</span></span><span class="msg" ${st === 'locked' ? 'aria-hidden="true"' : ''}>${esc(msg)}</span></span>
+      <span class="t">${when}</span>
+    </button>`;
+  }).join('');
+  g.querySelectorAll('.scn').forEach(b => b.onclick = () => openScenario(+b.dataset.idx));
+}
+// 진행 중 카드로 바로 들어갈 수 있는 경우: 스테이지 소개가 떠 있을 때만(대화·결과·도감 화면에서는 점수 규칙을 건너뛰지 않도록 막는다)
+// 다시 해 보기는 대화가 끝난 화면(단계 클리어·리포트)에서도 열 수 있다. 진행 중인 대화나 게임 오버 화면에서는 막는다
+const canEnterNow = () => { const ov = $('overlayRoot'); return ov.innerHTML ? !!ov.querySelector('.stage-intro') : $('messages').children.length === 0; };
+const canReplay = () => { const ov = $('overlayRoot'); return S.pre != null && (canEnterNow() || !!ov.querySelector('.overlay.clear')); };
+// 순서 제한 없음: 대화 응답을 기다리는 중이 아니면 아무 사건이나 바로 연다
+const canSwitch = () => { const ov = $('overlayRoot'); if (S.pre == null) return false;
+  if (ov.innerHTML) return !!ov.querySelector('.stage-intro, .overlay.clear, .overlay.over');
+  return !S.busy; };
+function openScenario(idx) {
+  const st = stageState(idx);
+  if (st !== 'replay' && canSwitch()) {
+    // 게임 오버 화면에서 다른 사건으로 넘어가면 '다시 도전'과 똑같이 잔고를 되돌린다
+    if ($('overlayRoot').querySelector('.overlay.over') && !S.replay) { S.stats.retries++; S.balance = START_BALANCE; updateHud(); }
+    if (st === 'done') showStageIntro(idx, true); else showStageIntro(idx);
+    focusPhone(); return;
+  }
+  const why = st === 'done' ? (S.pre == null ? '첫 화면에서 자가진단 후 훈련을 시작하세요.' : '진행 중인 대화를 먼저 마친 뒤 다시 해 볼 수 있습니다.')
+    : st === 'replay' ? '지금 다시 하고 있는 사건입니다.'
+    : S.pre == null ? '첫 화면에서 자가진단 후 훈련을 시작하세요.'
+    : $('overlayRoot').innerHTML ? '폰 화면의 안내를 먼저 마치세요.' : '진행 중인 대화를 먼저 마치세요.';
+  previewScenario(idx, why);
+}
+function previewScenario(idx, why) {
+  const s = SCENARIOS[idx], t = themeOf(s), m = $('artModal');
+  m.innerHTML = `<div class="art-card glass" role="dialog" aria-modal="true" aria-label="${s.stage_id}단계 미리보기">
+    ${artFig(s, 'big')}
+    <div class="art-body">
+      <div class="eyebrow">${s.stage_id}단계 · ${(NOTI[s.platform] || [,,s.platform])[2]}</div>
+      <h2>${t.title}</h2>
+      <p>${esc(s.scam_type)}</p>
+      <p class="why">${why}</p>
+      <div class="art-actions"><button class="btn ghost" id="artClose">닫기</button></div>
+    </div></div>`;
+  m.classList.add('open');
+  const close = () => { m.classList.remove('open'); m.innerHTML = ''; };
+  $('artClose').onclick = close; $('artClose').focus({ preventScroll:true });
+  m.onclick = e => { if (e.target === m) close(); };
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('artModal').classList.contains('open')) { $('artModal').classList.remove('open'); $('artModal').innerHTML = ''; } });
+
+async function startStage(idx, replay = false) {
+  if (replay && !S.replay) beginReplay();
+  closeOverlay();
+  Object.assign(S, { stageIdx:idx, turnIdx:0, trust:100, busy:true, lastBubble:null, attemptId:null });
+  const s = stage();
+  applyTheme(s.platform);
+  $('avatar').textContent = theme().icon;
+  $('whoName').textContent = s.scammer_profile.name;
+  $('whoStatus').textContent = s.scammer_profile.status_message;
+  $('messages').innerHTML = '';
+  updateHud();
+  addSys('info', '', s.platform === 'SMS' ? '오늘' : `${esc(s.scammer_profile.name)}님과의 대화가 시작되었습니다`);
+  // 서버에 이 사건 도전을 기록한다 (이미 막은 사건이면 서버도 '다시 해 보기'로 처리)
+  try {
+    S.attemptId = (await ScamApi.startAttempt(S.sessionId, s.stage_id)).attempt_id;
+  } catch (e) {
+    S.busy = false;
+    $('options').innerHTML = `<div class="opt-head"><span>서버에 연결하지 못했습니다.</span></div><button class="opt" id="stageRetry">다시 시도</button>`;
+    $('stageRetry').onclick = () => startStage(idx, replay);
+    return;
+  }
+  playTurn();
+}
+
+function renderTitle(el) {
+  el.innerHTML = `
+    <div class="ts-status"><span>${$('clock').textContent}</span><span>●●● 5G ▮</span></div>
+    <div class="ts-scroll">
+      <h1 class="ts-title">사기 <em>생존기</em></h1>
+      <p class="ts-msg">사기꾼 ${nWord()} 명이<br>당신의 <b>${won(START_BALANCE)}</b>을<br>노리고 있습니다.</p>
+      <p class="ts-goal">채팅 속 <b>위험 신호</b>를 찾아내고<br>끝까지 지켜내세요.</p>
+    </div>
+    <div class="ts-foot" id="tsFoot">
+      <button class="btn" id="startBtn">${S.sessionId ? `이어서 하기 · ${Object.keys(S.cleared).length} / ${SCENARIOS.length} 방어` : '훈련 시작'}</button>
+      ${S.sessionId ? '<button class="btn ghost" id="freshBtn">처음부터 새로 하기</button>' : ''}
+      <div class="ts-legal">게임 속 링크, 계정, 기관 명의는 모두 교육용 가상 설정입니다.</div>
+    </div>`;
+  // 시작을 누르면 같은 자리에서 사전 자가진단 한 문항을 묻고, 고르는 즉시 서버에 세션을 만들고 입장한다
+  const askPre = () => {
+    $('tsFoot').innerHTML = `<div class="q">시작 전에 하나만 · 사기 메시지를 알아보고 대처할 자신이 있나요?</div>
+      ${scalePicker()}<div class="ts-legal" id="preMsg"></div>`;
+    bindScale(async v => {
+      try {
+        const ses = await ScamApi.startSession(v);
+        applyRules(ses.rules);
+        Object.assign(S, { pre:v, sessionId:ses.session_id, balance:START_BALANCE });
+        updateHud();
+        setTimeout(() => Intro.enter(), 180);
+      } catch (e) {
+        $('preMsg').textContent = '서버에 연결하지 못했습니다. 잠시 후 다시 골라 주세요.';
+      }
+    });
+  };
+  $('startBtn').onclick = () => { if (S.pre != null) Intro.enter(); else askPre(); };
+  if ($('freshBtn')) $('freshBtn').onclick = () => { ScamApi.forgetSession(); resetGame(); askPre(); };
+}
+
+// 새로고침해도 이어 하기: 저장된 세션이 있으면 서버 기록으로 진행 상황을 되살린다
+async function restoreSession() {
+  const saved = await ScamApi.resumeSession();
+  if (!saved) return;
+  if (saved.finished) { ScamApi.forgetSession(); return; }   // 리포트까지 본 훈련은 새로 시작
+  const sum = saved.summary;
+  S.sessionId = saved.session_id;
+  S.pre = saved.pre_confidence;
+  S.balance = sum.balance;
+  S.rulesSeen = true;
+  sum.stages.filter(st => st.cleared).forEach(st => { S.cleared[st.scenario_id] = { trust:st.best_trust }; });
+  sum.found_flags.forEach(id => S.found.add(id));
+  S.stageIdx = Math.min(frontier(), SCENARIOS.length - 1);
+  updateHud();
+}
+
+function resetGame() {
+  S = freshState(); updateHud(); clearOptions('');
+  $('messages').innerHTML = ''; closeOverlay();
+}
+function showTitle() {
+  ScamApi.forgetSession();   // '처음으로'는 새 훈련 → 다음 자가진단 때 새 세션을 만든다
+  resetGame();
+  Intro.showTitleAgain();
+}
+
+// 도감: 대화 중에는 폰 화면 오버레이로, 단계 안내·결과 화면이 떠 있을 때는 그 위에 한 겹 더 띄우고 닫으면 원래 화면으로 돌아간다
+$('dexBtn').onclick = () => {
+  if ($('overlayRoot').querySelector('.dex-overlay') || $('dexLayer')) return;
+  const html = `<div class="eyebrow">위험 신호 도감</div><h2>${S.found.size} / ${FLAGS.length}</h2>
+    <div class="dex-list" id="dexM" style="justify-content:center;margin-top:10px"></div>
+    <div class="box" id="dexTipM" style="min-height:60px">${S.found.size ? '칩을 눌러 설명을 확인하세요.' : '대화가 끝날 때마다 찾은 위험 신호가 여기에 모입니다.'}</div>
+    <button class="btn ghost" id="dexClose">닫기</button>`;
+  let close;
+  if ($('overlayRoot').innerHTML) {
+    const layer = document.createElement('div');
+    layer.id = 'dexLayer'; layer.className = 'overlay dark dex-overlay'; layer.style.zIndex = 22;
+    layer.innerHTML = `<div class="inner">${html}</div>`;
+    $('phone').appendChild(layer);
+    close = () => { layer.remove(); setTab('train'); const b = $('overlayRoot').querySelector('.btn'); if (b) b.focus({ preventScroll:true }); };
+  } else {
+    overlay('dark dex-overlay', html);
+    close = closeOverlay;
+  }
+  renderDex($('dexM'));
+  $('dexM').querySelectorAll('.chip.on').forEach(c => c.onclick = () => { const f = FLAGS.find(x => x.id === c.dataset.id); $('dexTipM').innerHTML = `<b>${f.label}</b><br>${esc(f.why)}`; });
+  $('dexClose').onclick = close; $('dexClose').focus({ preventScroll:true });
+};
+
+/* ---------- 레일 메뉴 ---------- */
+function focusPhone() {
+  if (matchMedia('(max-width:1100px)').matches) $('phone').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+document.querySelectorAll('.rail-btn').forEach(btn => btn.addEventListener('click', e => {
+  const go = btn.dataset.go, pop = $('reportPop');
+  if (go === 'call') { const open = !pop.classList.contains('open'); pop.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); return; }
+}));
+document.addEventListener('click', e => { const pop = $('reportPop'); if (pop.classList.contains('open') && !pop.contains(e.target) && !e.target.closest('.rail-btn[data-go=call]')) { pop.classList.remove('open'); document.querySelector('.rail-btn[data-go=call]').setAttribute('aria-expanded','false'); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { $('reportPop').classList.remove('open'); closeSheet(); } });
+
+/* ---------- 모바일 메뉴 시트 ---------- */
+function openSheet() {
+  const item = document.querySelector('.sheet-item[data-go=report]');
+  item.disabled = !reportReady;
+  $('sheetReportNote').textContent = reportReady ? '' : `${SCENARIOS.length}단계 완료 후`;
+  $('sheetDexCount').textContent = `${S.found.size} / ${FLAGS.length}`;
+  $('sheetDim').hidden = false; $('menuSheet').hidden = false;
+  $('menuBtn').setAttribute('aria-expanded', 'true');
+  $('menuSheet').querySelector('.sheet-item:not(:disabled)').focus();
+}
+function closeSheet(returnFocus = true) {
+  if ($('menuSheet').hidden) return;
+  $('sheetDim').hidden = true; $('menuSheet').hidden = true;
+  $('menuBtn').setAttribute('aria-expanded', 'false');
+  if (returnFocus) $('menuBtn').focus();
+}
+$('menuBtn').onclick = openSheet;
+$('sheetDim').onclick = () => closeSheet();
+$('menuSheet').querySelectorAll('.sheet-item').forEach(b => b.onclick = () => {
+  const go = b.dataset.go;
+  closeSheet(false);
+  if (go === 'dex') $('dexBtn').click();
+  if (go === 'report') openReport();
+  if (go === 'top') window.scrollTo({ top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+});
+
+// 시작: 콘텐츠를 서버에서 받고 → 저장된 세션이 있으면 되살린 뒤 → 인트로
+loadContent().then(async () => {
+  resetGame();
+  try { await restoreSession(); } catch (e) { /* 이어 하기 실패는 새로 시작으로 */ }
+  Intro.boot({
+    video: 'assets/intro.mp4',
+    poster: 'assets/intro-poster.webp',
+    back: 'assets/intro-back.webp',
+    phoneRect: { x:0.4505, y:0.1472, w:0.1932, h:0.7472, r:0.1 },
+    phoneQuad: [[0.4906,0.2296],[0.6167,0.2019],[0.6771,0.6991],[0.5437,0.7269]],
+    onTitle: renderTitle,
+    // 아직 못 막은 첫 사건부터. 모두 막았는데 리포트 전이면 사후 자가진단으로
+    onEnter: () => { const f = frontier(); f < SCENARIOS.length ? showStageIntro(f) : showPostCheck(); focusPhone(); }
+  });
+}).catch(() => {
+  document.body.insertAdjacentHTML('beforeend',
+    '<div role="alert" style="position:fixed;inset:0;z-index:999;display:grid;place-items:center;background:#07080c;color:#fff;font:16px/1.6 system-ui;text-align:center;padding:24px">' +
+    '서버에 연결하지 못했습니다.<br>백엔드(npm start)가 켜져 있는지 확인한 뒤 새로고침해 주세요.</div>');
+});
+</script>
+</body>
+</html>

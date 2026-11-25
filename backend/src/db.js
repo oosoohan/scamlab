@@ -1,30 +1,39 @@
 const fs = require('fs');
 const path = require('path');
-// Node 내장 SQLite (Node 22.13+). 따로 설치하거나 C++ 빌드할 필요가 없다.
-const { DatabaseSync } = require('node:sqlite');
+const crypto = require('crypto');
+const { createClient } = require('@libsql/client');
 
 const DEFAULT_PATH = path.resolve(__dirname, '../data/scamlab.db');
+const SCHEMA_SQL = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 
-/** DB를 열고 스키마를 적용한다. ':memory:' 를 넘기면 테스트용 메모리 DB. */
-function openDb(dbPath = process.env.DB_PATH || DEFAULT_PATH) {
-  if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
-  const db = new DatabaseSync(dbPath);
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
-  db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
-
-  /** fn을 하나의 트랜잭션으로 감싼 함수를 돌려준다. 중간에 오류가 나면 전부 되돌린다. */
-  db.transaction = fn => (...args) => {
-    db.exec('BEGIN');
-    try {
-      const result = fn(...args);
-      db.exec('COMMIT');
-      return result;
-    } catch (err) {
-      db.exec('ROLLBACK');
-      throw err;
+/**
+ * DB 연결. 같은 코드로 두 곳에 붙는다.
+ *  - 배포(Vercel): TURSO_DATABASE_URL + TURSO_AUTH_TOKEN → Turso 클라우드 DB
+ *  - 로컬 개발   : 설정이 없으면 backend/data/scamlab.db 파일 (DB_PATH로 바꿀 수 있음)
+ *  - 테스트      : ':memory:'
+ */
+function openDb(url) {
+  if (!url) {
+    if (process.env.TURSO_DATABASE_URL) url = process.env.TURSO_DATABASE_URL;
+    else {
+      const file = path.resolve(process.env.DB_PATH || DEFAULT_PATH);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      url = 'file:' + file;
     }
-  };
-  return db;
+  }
+  return createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN });
 }
 
-module.exports = { openDb, DEFAULT_PATH };
+/** 테이블이 없으면 만든다 (여러 번 실행해도 안전) */
+async function initSchema(db) {
+  await db.executeMultiple(SCHEMA_SQL);
+}
+
+/** libsql Row → 평범한 객체 */
+const plain = row => (row ? { ...row } : undefined);
+const rows = rs => rs.rows.map(plain);
+
+/** 같은 내용이면 같은 값 (콘텐츠가 바뀌었는지 알아볼 때 사용) */
+const hashOf = data => crypto.createHash('sha1').update(JSON.stringify(data)).digest('hex');
+
+module.exports = { openDb, initSchema, plain, rows, hashOf, DEFAULT_PATH };

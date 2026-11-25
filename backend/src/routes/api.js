@@ -13,6 +13,9 @@ const bad = (code, msg, extra) => new ApiError(400, code, msg, extra);
 const TOKEN_RE = /^[A-Za-z0-9_-]{8,64}$/;
 const isScale = v => Number.isInteger(v) && v >= 1 && v <= 5;
 
+/** Express 4는 async 함수의 오류를 잡지 못하므로 감싸서 오류 처리기로 넘긴다 */
+const h = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
 function createApiRouter({ store, content }) {
   const router = express.Router();
   router.use(express.json({ limit: '10kb' }));   // 잘못된 JSON도 아래 오류 처리기에서 JSON으로 응답
@@ -25,21 +28,22 @@ function createApiRouter({ store, content }) {
     if (!t || !TOKEN_RE.test(t)) throw new ApiError(401, 'NO_TOKEN', 'X-Player-Token 헤더가 필요합니다.');
     return t;
   };
-  const ownSession = (req, sessionId) => {
+  const ownSession = async (req, sessionId) => {
     const token = tokenOf(req);
-    const s = store.getSession(sessionId);
+    const s = await store.getSession(sessionId);
     if (!s || s.player_token !== token) throw new ApiError(404, 'SESSION_NOT_FOUND', '세션을 찾을 수 없습니다.');
     return s;
   };
-  const ownAttempt = (req, attemptId) => {
-    const a = store.getAttempt(Number(attemptId));
+  const ownAttempt = async (req, attemptId) => {
+    tokenOf(req);
+    const a = Number.isInteger(Number(attemptId)) ? await store.getAttempt(Number(attemptId)) : null;
     if (!a) throw new ApiError(404, 'ATTEMPT_NOT_FOUND', '도전 기록을 찾을 수 없습니다.');
-    const s = ownSession(req, a.session_id);
+    const s = await ownSession(req, a.session_id);
     return { attempt: a, session: s };
   };
-  const evaluate = (session, extra = {}) => evaluateSession({
+  const evaluate = async (session, attempts) => evaluateSession({
     content, rules: loadRules(session.scoring_version),
-    attempts: extra.attempts || store.sessionAttempts(session.id),
+    attempts: attempts || await store.sessionAttempts(session.id),
     pre: session.pre_confidence, post: session.post_confidence
   });
   /** 화면 위 HUD·오른쪽 메뉴에 필요한 만큼만 */
@@ -52,9 +56,9 @@ function createApiRouter({ store, content }) {
     stages: ev.stages.map(s => ({ scenario_id: s.scenario_id, cleared: s.cleared, best_trust: s.best_trust })),
     avg_trust: ev.avg_trust
   });
-  const attemptView = (attempt, session) => {
+  const attemptView = async (attempt, session) => {
     const scenario = content.scenarioById.get(attempt.scenario_id);
-    const r = foldAttempt(scenario, store.answersOfAttempt(attempt.id), loadRules(session.scoring_version));
+    const r = foldAttempt(scenario, await store.answersOfAttempt(attempt.id), loadRules(session.scoring_version));
     return {
       attempt_id: attempt.id, scenario_id: attempt.scenario_id, attempt_no: attempt.attempt_no,
       is_replay: !!attempt.is_replay, status: attempt.status, trust: r.trust,
@@ -63,7 +67,11 @@ function createApiRouter({ store, content }) {
   };
 
   /* ---------- 콘텐츠 ---------- */
-  router.get('/health', (req, res) => res.json({ ok: true }));
+  // 배포 확인용: DB까지 실제로 다녀와서 응답한다
+  router.get('/health', h(async (req, res) => {
+    await store.db.execute('SELECT 1');
+    res.json({ ok: true, db: process.env.TURSO_DATABASE_URL ? 'turso' : 'local', scenarios: content.scenarios.length, flags: content.flags.length });
+  }));
 
   router.get('/content', (req, res) => {
     res.set('ETag', publicEtag).set('Cache-Control', 'no-cache');
@@ -72,48 +80,48 @@ function createApiRouter({ store, content }) {
   });
 
   /* ---------- 세션 ---------- */
-  router.post('/sessions', (req, res) => {
+  router.post('/sessions', h(async (req, res) => {
     const { player_token, pre_confidence } = req.body || {};
     if (!player_token || !TOKEN_RE.test(player_token)) throw bad('INVALID_TOKEN', 'player_token은 8~64자의 영문·숫자·-·_ 이어야 합니다.');
     if (!isScale(pre_confidence)) throw bad('INVALID_CONFIDENCE', 'pre_confidence는 1~5 정수여야 합니다.');
     const id = crypto.randomUUID();
-    store.createSession(id, player_token, pre_confidence, CURRENT_VERSION);
+    await store.createSession(id, player_token, pre_confidence, CURRENT_VERSION);
     const rules = loadRules(CURRENT_VERSION);
     res.status(201).json({
       session_id: id,
       scoring_version: rules.version,
       rules: { start_trust: rules.start_trust, start_balance: rules.start_balance, trap_penalty: rules.trap_penalty }
     });
-  });
+  }));
 
   // 새로고침 후 이어 하기, 오른쪽 메뉴 갱신용
-  router.get('/sessions/:id', (req, res) => {
-    const session = ownSession(req, req.params.id);
-    const playing = store.playingAttempt(session.id);
+  router.get('/sessions/:id', h(async (req, res) => {
+    const session = await ownSession(req, req.params.id);
+    const [ev, playing] = await Promise.all([evaluate(session), store.playingAttempt(session.id)]);
     res.json({
       session_id: session.id,
       pre_confidence: session.pre_confidence,
       post_confidence: session.post_confidence,
       finished: !!session.finished_at,
-      summary: summaryOf(evaluate(session)),
-      playing_attempt: playing ? attemptView(playing, session) : null
+      summary: summaryOf(ev),
+      playing_attempt: playing ? await attemptView(playing, session) : null
     });
-  });
+  }));
 
   /* ---------- 단계 도전 ---------- */
-  router.post('/sessions/:id/attempts', (req, res) => {
-    const session = ownSession(req, req.params.id);
+  router.post('/sessions/:id/attempts', h(async (req, res) => {
+    const session = await ownSession(req, req.params.id);
     const scenarioId = Number(req.body?.scenario_id);
     if (!content.scenarioById.has(scenarioId)) throw bad('INVALID_SCENARIO', '없는 사건입니다.');
     // 이미 막아 낸 사건이면 자동으로 '다시 해 보기'
-    const ev = evaluate(session);
+    const ev = await evaluate(session);
     const isReplay = ev.stages.find(s => s.scenario_id === scenarioId).cleared;
-    const attempt = store.startAttempt(session.id, scenarioId, isReplay);
-    res.status(201).json(attemptView(attempt, session));
-  });
+    const attempt = await store.startAttempt(session.id, scenarioId, isReplay);
+    res.status(201).json(await attemptView(attempt, session));
+  }));
 
-  router.post('/attempts/:id/answers', (req, res) => {
-    const { attempt, session } = ownAttempt(req, req.params.id);
+  router.post('/attempts/:id/answers', h(async (req, res) => {
+    const { attempt, session } = await ownAttempt(req, req.params.id);
     const { turn_id, option_id, hint_used = false } = req.body || {};
     if (attempt.status !== 'playing') {
       throw new ApiError(409, 'ATTEMPT_ENDED', '이미 끝난(또는 다른 사건으로 넘어간) 도전입니다.', { status: attempt.status });
@@ -121,22 +129,24 @@ function createApiRouter({ store, content }) {
     const rules = loadRules(session.scoring_version);
     const scenario = content.scenarioById.get(attempt.scenario_id);
 
-    const result = store.db.transaction(() => {
-      const before = foldAttempt(scenario, store.answersOfAttempt(attempt.id), rules);
-      const expected = scenario.turns[before.nextTurnIndex];
-      if (!expected || Number(turn_id) !== expected.id) {
-        throw new ApiError(409, 'WRONG_TURN', '지금 답할 차례의 턴이 아닙니다.', { expected_turn_id: expected?.id ?? null });
-      }
-      const option = expected.options.find(o => o.id === option_id);
-      if (!option) throw bad('INVALID_OPTION', '이 턴에 없는 선택지입니다.');
+    // 판정은 메모리에서 하고, 저장은 한 번의 batch로 (중복 제출은 UNIQUE 제약이 막는다)
+    const answers = await store.answersOfAttempt(attempt.id);
+    const before = foldAttempt(scenario, answers, rules);
+    const turn = scenario.turns[before.nextTurnIndex];
+    if (!turn || Number(turn_id) !== turn.id) {
+      throw new ApiError(409, 'WRONG_TURN', '지금 답할 차례의 턴이 아닙니다.', { expected_turn_id: turn?.id ?? null });
+    }
+    const option = turn.options.find(o => o.id === option_id);
+    if (!option) throw bad('INVALID_OPTION', '이 턴에 없는 선택지입니다.');
+    const after = foldAttempt(scenario, [...answers, { turn_id: turn.id, option_id: option.id }], rules);
 
-      store.insertAnswer(attempt.id, expected.id, option.id, !!hint_used);
-      const after = foldAttempt(scenario, store.answersOfAttempt(attempt.id), rules);
-      if (after.status !== 'playing') store.endAttempt(attempt.id, after.status);
-      return { option, before, after, turn: expected };
-    })();
+    try {
+      await store.recordAnswer(attempt.id, turn.id, option.id, !!hint_used, after.status !== 'playing' ? after.status : null);
+    } catch (e) {
+      if (/UNIQUE/i.test(String(e.message))) throw new ApiError(409, 'WRONG_TURN', '이미 답한 턴입니다.', { expected_turn_id: null });
+      throw e;
+    }
 
-    const { option, before, after, turn } = result;
     const body = {
       type: option.type,
       feedback: option.feedback,
@@ -150,7 +160,7 @@ function createApiRouter({ store, content }) {
       stage_result: null
     };
 
-    const attempts = store.sessionAttempts(session.id);
+    const attempts = await store.sessionAttempts(session.id);
     if (after.status === 'failed') {
       body.game_over_reason = after.failCause === 'trust_depleted'
         ? `${rules.messages.trust_depleted}\n\n${scenario.game_over_reason}`
@@ -158,7 +168,7 @@ function createApiRouter({ store, content }) {
     }
     if (after.status === 'cleared') {
       // 다시 해 보기라면 이번 도전 전의 최고 기록과 비교해서 알려 준다
-      const prevBest = evaluate(session, { attempts: attempts.filter(a => a.id !== attempt.id) })
+      const prevBest = (await evaluate(session, attempts.filter(a => a.id !== attempt.id)))
         .stages.find(s => s.scenario_id === scenario.id).best_trust;
       body.stage_result = {
         trust: after.trust,
@@ -166,39 +176,35 @@ function createApiRouter({ store, content }) {
         improved: prevBest == null || after.trust > prevBest
       };
     }
-    body.summary = summaryOf(evaluate(session, { attempts }));
+    body.summary = summaryOf(await evaluate(session, attempts));
     res.json(body);
-  });
+  }));
 
   /* ---------- 마무리·리포트 ---------- */
-  router.post('/sessions/:id/finish', (req, res) => {
-    const session = ownSession(req, req.params.id);
+  router.post('/sessions/:id/finish', h(async (req, res) => {
+    const session = await ownSession(req, req.params.id);
     const post = req.body?.post_confidence;
     if (!isScale(post)) throw bad('INVALID_CONFIDENCE', 'post_confidence는 1~5 정수여야 합니다.');
-    const ev = evaluate(session);
+    const ev = await evaluate(session);
     if (!ev.report_ready) throw new ApiError(409, 'NOT_READY', '모든 사건을 막아 낸 뒤에 리포트를 볼 수 있습니다.', { progress: ev.progress });
-    store.finishSession(session.id, post);
-    res.json(evaluate(store.getSession(session.id)));
-  });
+    await store.finishSession(session.id, post);
+    res.json(await evaluate(await store.getSession(session.id)));
+  }));
 
-  router.get('/sessions/:id/report', (req, res) => {
-    const session = ownSession(req, req.params.id);
-    const ev = evaluate(session);
+  router.get('/sessions/:id/report', h(async (req, res) => {
+    const session = await ownSession(req, req.params.id);
+    const ev = await evaluate(session);
     if (!ev.report_ready) throw new ApiError(409, 'NOT_READY', '모든 사건을 막아 낸 뒤에 리포트를 볼 수 있습니다.', { progress: ev.progress });
     res.json(ev);
-  });
+  }));
 
   /* ---------- 운영자용 문항 통계 (ADMIN_TOKEN을 설정했을 때만 열림) ---------- */
-  router.get('/stats/items', (req, res) => {
+  router.get('/stats/items', h(async (req, res) => {
     const admin = process.env.ADMIN_TOKEN;
     if (!admin) throw new ApiError(404, 'NOT_FOUND', '없는 경로입니다.');
     if (req.get('X-Admin-Token') !== admin) throw new ApiError(403, 'FORBIDDEN', '권한이 없습니다.');
-    const rows = store.db.prepare(`
-      SELECT a.turn_id, a.option_id, COUNT(*) AS n, SUM(a.hint_used) AS hinted
-      FROM answers a JOIN stage_attempts s ON s.id = a.attempt_id
-      WHERE s.is_replay = 0 GROUP BY a.turn_id, a.option_id`).all();
     const byTurn = new Map();
-    for (const r of rows) {
+    for (const r of await store.itemStats()) {
       const e = byTurn.get(r.turn_id) || { n: 0, hinted: 0, options: {} };
       e.n += r.n; e.hinted += r.hinted; e.options[r.option_id] = r.n;
       byTurn.set(r.turn_id, e);
@@ -209,13 +215,13 @@ function createApiRouter({ store, content }) {
       const correct = t.options.find(o => o.type === 'correct');
       items.push({
         scenario_id: s.id, turn: t.turn_no, turn_id: t.id, responses: e.n,
-        correct_rate: e.n ? +(e.options[correct.id] || 0) / e.n : null,
+        correct_rate: e.n ? (e.options[correct.id] || 0) / e.n : null,
         hint_rate: e.n ? e.hinted / e.n : null,
         options: t.options.map(o => ({ option_id: o.id, type: o.type, picks: e.options[o.id] || 0 }))
       });
     }
     res.json({ items });
-  });
+  }));
 
   /* ---------- 오류 응답: { error: { code, message, ... } } ---------- */
   router.use((req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: '없는 경로입니다.' } }));
