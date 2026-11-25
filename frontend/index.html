@@ -1188,7 +1188,7 @@ function applyTheme(platform) {
   const t = THEMES[platform] || THEMES.SMS, r = $('phone').style; // 플랫폼 색은 폰 안에서만
   r.setProperty('--accent', t.accent); r.setProperty('--bubble-out', t.bubbleOut); r.setProperty('--out-text', t.outText);
   r.setProperty('--header', t.header); r.setProperty('--header-text', t.headerText); r.setProperty('--chat-bg', t.chatBg); r.setProperty('--bg', t.chatBg);
-  $('avatar').style.background = t.avatar; $('avatar').textContent = t.icon; $('platformPill').textContent = platform;
+  $('avatar').style.background = t.avatar; $('avatar').textContent = t.icon; $('platformPill').textContent = (NOTI[platform] || [,,platform])[2];   // 실제 상표명 대신 게임 속 한국어 이름(홍당무·코코아톡 등)
 }
 
 function updateHud() {
