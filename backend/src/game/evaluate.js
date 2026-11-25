@@ -19,14 +19,23 @@ const { foldAttempt } = require('./attempt');
  * @param {number|null} p.pre
  * @param {number|null} p.post
  */
-function evaluateSession({ content, attempts, rules, pre = null, post = null }) {
+// 세션 id로 고정되는 난수: 같은 기록이면 몇 번을 다시 계산해도 같은 금액이 나온다
+function seededRandom(seed, k) {
+  let h = 2166136261 >>> 0;
+  for (const ch of `${seed}:${k}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  h ^= h >>> 15; h = Math.imul(h, 2246822507) >>> 0; h ^= h >>> 13; h = Math.imul(h, 3266489909) >>> 0; h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+function evaluateSession({ content, attempts, rules, pre = null, post = null, seed = '' }) {
   const stats = { correct: 0, trap: 0, wrong: 0, hints: 0, retries: 0 };
   const found = new Set();
   const mistakes = [];
   const stageMap = new Map(content.scenarios.map(s => [s.id, { scenario_id: s.id, is_scam: s.is_scam !== false, cleared: false, failed: false, first_try: null, best_trust: null, misses: 0, attempts: 0 }]));
   let lastMainFailed = false;
-  // 규칙 v2: 본 도전의 치명타·링크 열기로 잃은 돈이 게임 전체에서 누적된다 (다시 해 보기는 돈을 잃지 않음)
-  let lost = 0, linkClicks = 0;
+  // 규칙 v2: 본 도전의 치명타·링크 열기 = '털림'. 일어난 순서대로 세 번이면 잔고 0 (다시 해 보기는 돈을 잃지 않음)
+  const lossEvents = [];
+  let linkClicks = 0;
 
   for (const at of attempts) {
     const scenario = content.scenarioById.get(at.scenario_id);
@@ -61,14 +70,33 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null }) 
       stage.best_trust = Math.max(stage.best_trust ?? 0, result.trust);
     }
     if (main) {
-      lost += result.wrongs * (rules.wrong_loss || 0);
-      linkClicks += (at.clicks || []).length;
-      lost += (at.clicks || []).length * (rules.link_loss || 0);
+      at.answers.forEach((a, i) => {
+        if (content.optionById.get(a.option_id).type === 'wrong') lossEvents.push({ at: a.answered_at || '', seq: lossEvents.length });
+      });
+      for (const c of at.clicks || []) {
+        linkClicks++;
+        lossEvents.push({ at: (c && c.at) || '', seq: lossEvents.length });
+      }
       if (result.status === 'failed') stats.retries++;
       // 돈을 잃는 건 사기에 당했을 때만. 진짜 메시지를 놓친 실패는 잔고를 건드리지 않는다
       lastMainFailed = result.status === 'failed' && scenario.is_scam !== false;
     }
   }
+
+  // 시간 순으로 털림을 센다. k번째 털림은 strike_ranges[k] 범위의 무작위 비율, 마지막(strikes_to_zero번째)은 남은 돈 전부
+  lossEvents.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.seq - b.seq));
+  let balanceV2 = rules.start_balance, lastLoss = 0;
+  const unit = rules.loss_unit || 1, ranges = rules.strike_ranges || [], toZero = rules.strikes_to_zero || 3;
+  lossEvents.forEach((e, k) => {
+    let take = 0;
+    if (k + 1 >= toZero) take = balanceV2;
+    else {
+      const [lo, hi] = ranges[k] || [0.3, 0.5];
+      const base = k === 0 ? rules.start_balance : balanceV2;
+      take = Math.min(balanceV2, Math.max(unit, Math.round(base * (lo + (hi - lo) * seededRandom(seed, k)) / unit) * unit));
+    }
+    balanceV2 -= take; lastLoss = take;
+  });
 
   const stages = [...stageMap.values()];
   const clearedCount = stages.filter(s => s.cleared).length;
@@ -97,9 +125,11 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null }) 
     judgment,
     report_ready: reportReady,
     progress: { cleared: clearedCount, total: stages.length },
-    balance: rules.wrong_is_fatal ? (lastMainFailed ? 0 : rules.start_balance) : Math.max(0, rules.start_balance - lost),
-    lost: rules.wrong_is_fatal ? null : Math.min(lost, rules.start_balance),
+    balance: rules.wrong_is_fatal ? (lastMainFailed ? 0 : rules.start_balance) : balanceV2,
+    lost: rules.wrong_is_fatal ? null : rules.start_balance - balanceV2,
+    last_loss: rules.wrong_is_fatal ? null : lastLoss,
     link_clicks: linkClicks,
+    strikes: rules.wrong_is_fatal ? null : lossEvents.length,
     stages,
     found_flags: content.flags.filter(f => found.has(f.id)).map(f => f.id),
     flag_total: content.flags.length,

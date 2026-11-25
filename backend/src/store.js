@@ -57,16 +57,16 @@ function createStore(db) {
     async sessionAttempts(sessionId) {
       const [atRs, ansRs, clickRs] = await db.batch([
         { sql: 'SELECT * FROM stage_attempts WHERE session_id = ? ORDER BY id', args: [sessionId] },
-        { sql: `SELECT a.attempt_id, a.turn_id, a.option_id, a.hint_used FROM answers a
+        { sql: `SELECT a.attempt_id, a.turn_id, a.option_id, a.hint_used, a.answered_at FROM answers a
                 JOIN stage_attempts s ON s.id = a.attempt_id JOIN turns t ON t.id = a.turn_id
                 WHERE s.session_id = ? ORDER BY a.attempt_id, t.turn_no`, args: [sessionId] },
-        { sql: `SELECT c.attempt_id, c.url FROM link_clicks c JOIN stage_attempts s ON s.id = c.attempt_id
+        { sql: `SELECT c.attempt_id, c.url, c.clicked_at FROM link_clicks c JOIN stage_attempts s ON s.id = c.attempt_id
                 WHERE s.session_id = ? ORDER BY c.clicked_at`, args: [sessionId] }
       ], 'read');
       const attempts = rows(atRs).map(a => ({ ...a, answers: [], clicks: [] }));
       const byId = new Map(attempts.map(a => [a.id, a]));
       for (const ans of rows(ansRs)) byId.get(ans.attempt_id).answers.push(ans);
-      for (const c of rows(clickRs)) byId.get(c.attempt_id).clicks.push(c.url);
+      for (const c of rows(clickRs)) byId.get(c.attempt_id).clicks.push({ url: c.url, at: c.clicked_at });
       return attempts;
     },
 

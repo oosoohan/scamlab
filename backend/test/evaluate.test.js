@@ -95,22 +95,28 @@ test('evaluateSession: 마지막 본 도전이 실패면 잔고 0', () => {
   assert.equal(ev.balance, 0);
 });
 
-test('규칙 v2: 치명타는 돈·신뢰도를 깎고 이어지며, 링크를 연 만큼 돈이 줄고, 다시 해 보기는 돈을 잃지 않는다', () => {
+test('규칙 v2: 치명타·링크 열기 = 털림, 무작위 금액으로 세 번이면 0원, 세션마다 금액은 고정, 다시 해 보기는 털리지 않는다', () => {
   const v2 = loadRules('v2');
-  let r = foldAttempt(S(1), answersFor(1, { 2: 'wrong' }).concat([]), v2);
-  // answersFor는 wrong에서 끊으므로 v2용으로 직접 만든다
   const turns = S(1).turns;
   const ans = turns.map((t, i) => ({ turn_id: t.id, option_id: pick(t.id, i === 1 ? 'wrong' : 'correct') }));
-  r = foldAttempt(S(1), ans, v2);
+  const r = foldAttempt(S(1), ans, v2);
   assert.deepEqual([r.status, r.wrongs, r.trust], ['cleared', 1, 75]);
 
   let id = 0;
   const at = (scenario_id, answers, is_replay = 0, clicks = []) => ({ id: ++id, scenario_id, is_replay, answers, clicks });
-  const ev = evaluateSession({ content, rules: v2, attempts: [
-    at(1, ans, 0, ['http://a', 'http://b']),          // 40만 + 링크 2개 40만
-    at(1, ans, 1, ['http://a'])                        // 다시 해 보기: 돈 안 잃음
+  const one = evaluateSession({ content, rules: v2, seed: 's1', attempts: [at(1, ans)] });
+  assert.ok(one.balance >= 3200000 * 0.55 && one.balance <= 3200000 * 0.75);
+  // 같은 세션이면 같은 금액, 다른 세션이면 (대개) 다른 금액
+  assert.equal(evaluateSession({ content, rules: v2, seed: 's1', attempts: [at(1, ans)] }).balance, one.balance);
+  const amounts = new Set(['a', 'b', 'c', 'd', 'e'].map(seed => evaluateSession({ content, rules: v2, seed, attempts: [at(1, ans)] }).balance));
+  assert.ok(amounts.size > 1);
+
+  const three = evaluateSession({ content, rules: v2, seed: 's1', attempts: [
+    at(1, ans, 0, [{ url: 'http://a', at: '' }, { url: 'http://b', at: '' }]),   // 치명타 1 + 링크 2 = 털림 3번 → 0원
+    at(1, ans, 1, [{ url: 'http://c', at: '' }])                                 // 다시 해 보기: 세지 않음
   ] });
-  assert.equal(ev.balance, 3200000 - 800000);
-  assert.equal(ev.lost, 800000);
-  assert.equal(ev.link_clicks, 2);
+  assert.equal(three.balance, 0);
+  assert.equal(three.lost, 3200000);
+  assert.equal(three.strikes, 3);
+  assert.equal(three.link_clicks, 2);
 });
