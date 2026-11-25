@@ -33,6 +33,7 @@ test('진짜(정상) 메시지', async t => {
     assert.equal(r.body.status, 'failed');
     assert.equal(r.body.fail_cause, 'trust_depleted');
     assert.equal(r.body.summary.balance, 3200000);
+    assert.equal(r.body.game_over, true);   // 규칙 v2: 실패하면 게임 전체가 끝난다
     assert.equal(r.body.reveal.is_scam, false);
     assert.ok(!r.body.game_over_reason.includes('사기꾼의 요구'));
   });

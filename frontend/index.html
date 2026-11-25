@@ -1231,7 +1231,7 @@ function renderSide() {
   $('kpiNote').textContent = pct === 100 ? `${man(START_BALANCE)} 중 한 푼도 안 뺏김` : S.balance === 0 ? `${man(START_BALANCE)}을 모두 털렸습니다` : `${man(START_BALANCE)} 중 ${man(S.balance)} 지킴`;
   $('kpiProg').textContent = `${cleared} / ${SCENARIOS.length}`;  // 처리 = 사기는 막고, 진짜는 제대로 처리한 수
   $('kpiFlags').textContent = `${S.found.size} / ${FLAGS.length}`;
-  reportReady = cleared === SCENARIOS.length;
+  reportReady = cleared === SCENARIOS.length || !!S.gameOver;
   renderSideMenu(cleared);
 }
 
@@ -1256,7 +1256,7 @@ function renderSideMenu(cleared) {
   if (!S.found.size) $('dexTip').textContent = '대화가 끝날 때마다 찾은 위험 신호가 여기에 모입니다.';
   else if (!tip || tip.startsWith('대화가')) $('dexTip').textContent = '칩을 누르면 왜 위험한지 알려 드려요.';
   if (reportReady) {
-    const ids = SCENARIOS.map(s => s.stage_id), avg = Math.round(ids.reduce((a, id) => a + S.cleared[id].trust, 0) / ids.length);
+    const ids = SCENARIOS.map(s => s.stage_id), avg = Math.round(ids.reduce((a, id) => a + (S.cleared[id]?.trust ?? 0), 0) / ids.length);
     $('accReportBody').innerHTML = `<div class="acc-stat"><span>평균 신뢰도</span><b>${avg}점</b></div><div class="acc-stat"><span>지킨 돈</span><b>${won(S.balance)}</b></div><div class="acc-stat"><span>찾은 위험 신호</span><b>${S.found.size} / ${FLAGS.length}</b></div><button class="acc-go" id="accReportGo">리포트 열기</button>`;
     $('accReportGo').onclick = openReport;
   } else {
@@ -1264,7 +1264,7 @@ function renderSideMenu(cleared) {
   }
 }
 function openReport() {
-  if (!reportReady || $('overlayRoot').innerHTML) return;
+  if (!reportReady || ($('overlayRoot').innerHTML && !S.gameOver)) return;
   focusPhone(); S.post == null ? showPostCheck() : showReport();
 }
 document.querySelectorAll('.acc-h').forEach(h => h.addEventListener('click', () => {
@@ -1339,6 +1339,7 @@ function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { co
 
 let currentOpts = [];
 function showOptions(turn) {
+  if (S.pendingOver) return gameOver(S.pendingOver);
   const box = $('options'), dark = theme().headerText === '#fff';
   S.hintUsed = false;
   box.innerHTML = `<div class="opt-head ${dark ? 'dark' : ''}"><span>대화 ${turn.turn} / ${stage().turns.length} · 어떻게 대응할까요?</span><button class="hint-btn" id="hintBtn" title="이 메시지의 위험 신호를 미리 표시합니다"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>위험 신호 보기</button></div>`;
@@ -1412,7 +1413,9 @@ async function handleResult(r) {
   if (r.reveal) applyReveal(stage().stage_id, r.reveal);
   S.stats[r.type]++;
   S.trust = r.trust;
-  if (MONEY && r.summary) S.balance = r.summary.balance;   // v2: 돈은 서버가 누적으로 계산
+  if (MONEY && r.summary) S.balance = r.summary.balance;
+  S.failCause = r.fail_cause || null;
+  if (r.game_over) S.gameOver = true;   // v2: 돈은 서버가 누적으로 계산
   if (r.loss) { S.attemptLoss += r.loss; addLedger('out', `${stage().scammer_profile.name} · 송금`, -r.loss, '치명적 실수'); }
   if (r.type === 'correct') {
     addSys('correct', '✅ 방어 성공', esc(r.feedback));
@@ -1474,6 +1477,8 @@ function animateNum(from, to, el) {
 function gameOver(reason) {
   const s = stage(), scam = isScam(s) !== false;
   if (!S.replay) S.failed[s.stage_id] = true;
+  S.pendingOver = null;
+  if (MONEY && !S.replay) return finalGameOver(reason);
   if (!scam) return missedLegit(reason);
   const v2 = MONEY;
   const lost = v2 ? S.attemptLoss : S.balance;
@@ -1499,7 +1504,31 @@ function gameOver(reason) {
   $('retryBtn').onclick = () => { if (S.replay) return startStage(S.stageIdx); restoreBalance(); S.stats.retries++; startStage(S.stageIdx); };
   $('homeBtn').onclick = S.replay ? afterReplay : showTitle;
 }
-// 사기에 당한 뒤 다시 도전하거나 다른 메시지로 넘어가면 훈련용 잔고를 되돌린다
+// 규칙 v2: 잔고 0원(털림 세 번)이거나 한 메시지에서 신뢰도가 바닥나면 게임 전체가 끝난다. 다시 도전은 없다
+function finalGameOver(reason) {
+  const s = stage(), scam = isScam(s) !== false, broke = S.balance <= 0;
+  S.gameOver = true;
+  updateHud();
+  const lostAll = START_BALANCE - S.balance;
+  overlay('over', `
+    ${broke || scam ? '<canvas class="siren" aria-hidden="true"></canvas>' : ''}
+    <div class="eyebrow">게임 오버 · 다시 도전은 없습니다</div>
+    ${revealLine(s)}
+    <h1>${broke ? '통장이 털렸습니다' : scam ? '당했습니다' : '진짜였는데 놓쳤어요'}</h1>
+    <p>${esc(themeOf(s).title)} · ${esc(s.scam_type)}</p>
+    ${lostAll > 0 ? `<p style="margin-top:4px;opacity:.8">훈련 동안 털린 돈</p><div class="big" id="lostNum">${won(lostAll)}</div><p style="opacity:.8">남은 잔고 <b>${won(S.balance)}</b></p>` : ''}
+    <div class="reason">${esc(reason).replace(/\n/g,'<br>')}</div>
+    ${lessonBox(s.stage_id)}
+    <p class="callout">현실에는 '다시 하기'가 없습니다. 실제로 돈을 보냈다면 바로 <b>112</b>에 지급정지를 요청하고 <b>1332</b> 금융감독원에 상담하세요.</p>
+    <button class="btn" id="endReportBtn">결과 보기</button>
+    <button class="btn ghost" id="homeBtn">처음부터 새로 하기</button>`);
+  const cv = $('overlayRoot').querySelector('canvas.siren');
+  if (cv) { overSiren = SirenWave.create(cv, { amplitude:.8 }); overSiren.start(); }
+  if (lostAll > 0) animateNum(0, lostAll, $('lostNum'));
+  $('endReportBtn').onclick = showPostCheck;
+  $('homeBtn').onclick = showTitle;
+}
+// 사기에 당한 뒤 다시 도전하거나 다른 메시지로 넘어가면 훈련용 잔고를 되돌린다 (규칙 v1)
 function restoreBalance() {
   if (MONEY) return;   // v2: 잃은 돈은 돌아오지 않는다 (누적)
   if (S.balance < START_BALANCE) { addLedger('in', '훈련용 잔고 복구', START_BALANCE - S.balance, '다시 도전'); S.balance = START_BALANCE; updateHud(); }
@@ -1603,8 +1632,8 @@ async function showReport(R) {
   const weak = R.weak_scenarios.map(id => themeOf(byId(id)).title);
   const J = R.judgment;
   const bars = R.stages.map(st => {
-    const s = byId(st.scenario_id), t = st.best_trust, c = t > 60 ? '#3ddc84' : t > 30 ? '#ffb020' : '#ff4d4d';
-    return `<div class="bar-row"><span class="lbl">${isScam(s) === false ? '✉️ ' : '🚨 '}${themeOf(s).title}</span><span class="bar"><i style="width:${t}%;background:${c}"></i></span><span class="v">${t}</span></div>`;
+    const s = byId(st.scenario_id), t = st.best_trust ?? 0, c = t > 60 ? '#3ddc84' : t > 30 ? '#ffb020' : '#ff4d4d';
+    return `<div class="bar-row"><span class="lbl">${isScam(s) === false ? '✉️ ' : '🚨 '}${themeOf(s).title}</span><span class="bar"><i style="width:${t}%;background:${c}"></i></span><span class="v">${st.best_trust == null ? '—' : t}</span></div>`;
   }).join('');
   const { pre, post, delta } = R.confidence;
   const notes = R.mistakes.length ? R.mistakes.map(m => `
@@ -1613,7 +1642,7 @@ async function showReport(R) {
     : '<p style="font-size:13px">틀린 선택이 하나도 없습니다. 완벽해요!</p>';
 
   overlay('clear', `
-    <div class="eyebrow">메시지 ${SCENARIOS.length}통 모두 처리 · 학습 리포트</div>
+    <div class="eyebrow">${R.game_over ? `게임 오버 · ${R.progress.cleared}/${R.progress.total}통 처리 · 학습 리포트` : `메시지 ${SCENARIOS.length}통 모두 처리 · 학습 리포트`}</div>
     <div class="big" style="font-size:68px;margin:0;line-height:1">${grade[0]}</div>
     <h2>${grade[1]}</h2>
     <p>${grade[2]}</p>
@@ -1758,6 +1787,7 @@ const canSwitch = () => { const ov = $('overlayRoot'); if (S.pre == null) return
   if (ov.innerHTML) return !!ov.querySelector('.stage-intro, .overlay.clear, .overlay.over');
   return !S.busy; };
 function openScenario(idx) {
+  if (S.gameOver) { if (!$('overlayRoot').innerHTML) showPostCheck(); return previewScenario(idx, '게임이 끝났습니다. 결과를 보거나 처음부터 새로 시작하세요.'); }
   const st = stageState(idx);
   if (st !== 'replay' && canSwitch()) {
     // 게임 오버 화면에서 다른 사건으로 넘어가면 '다시 도전'과 똑같이 잔고를 되돌린다
@@ -1888,6 +1918,7 @@ async function restoreSession() {
   S.sessionId = saved.session_id;
   S.pre = saved.pre_confidence;
   applyRules(saved.rules);
+  S.gameOver = !!saved.summary.game_over;
   S.balance = sum.balance;
   S.rulesSeen = true;
   sum.stages.forEach(st => {
@@ -2049,6 +2080,7 @@ function openFakePage(url) {
   let charged = 0;
   $('fwBack').onclick = () => {
     close();
+    if (S.pendingOver) { if (!S.busy) gameOver(S.pendingOver); return; }
     addSys('info', '', charged
       ? `🔗 링크를 연 대가로 <b>${won(charged)}</b>을 잃었습니다. 누르기 전에 주소부터 보세요: <b>${esc(host)}</b> 는 공식 주소가 아닙니다.`
       : `🔗 링크를 닫았습니다. 다음부턴 누르기 전에 주소를 보세요: <b>${esc(host)}</b> 는 공식 주소가 아닙니다.`);
@@ -2057,6 +2089,10 @@ function openFakePage(url) {
   if (MONEY && S.attemptId && !S.replay) {
     ScamApi.linkClick(S.attemptId, url).then(r => {
       S.balance = r.summary.balance;
+      if (r.status === 'failed') {   // 링크로 잔고가 0원 → 페이지를 닫거나 다음 선택 차례에 게임 오버
+        if (r.reveal) applyReveal(stage().stage_id, r.reveal);
+        S.failCause = r.fail_cause; S.gameOver = true; S.pendingOver = r.game_over_reason;
+      }
       if (r.charged) {
         charged = r.loss;
         S.attemptLoss = (S.attemptLoss || 0) + r.loss;
@@ -2087,7 +2123,7 @@ function caught(p, host, url, wrap) {
     <button class="btn" id="fwOut">대화로 돌아가기</button>`;
   wrap.appendChild(c);
   $('fwOut').focus({ preventScroll:true });
-  $('fwOut').onclick = () => wrap.remove();
+  $('fwOut').onclick = () => { wrap.remove(); if (S.pendingOver && !S.busy) gameOver(S.pendingOver); };
 }
 
 $('messages').addEventListener('click', e => {
@@ -2194,7 +2230,7 @@ loadContent().then(async () => {
     phoneQuad: [[0.4836,0.2306],[0.6204,0.1981],[0.6838,0.7004],[0.5440,0.7426]],
     onTitle: renderTitle,
     // 아직 못 막은 첫 사건부터. 모두 막았는데 리포트 전이면 사후 자가진단으로
-    onEnter: () => { const f = frontier(); f < SCENARIOS.length ? showStageIntro(f) : showPostCheck(); focusPhone(); }
+    onEnter: () => { const f = frontier(); !S.gameOver && f < SCENARIOS.length ? showStageIntro(f) : showPostCheck(); focusPhone(); }
   });
 }).catch(() => {
   const cover = document.getElementById('bootCover'); if (cover) cover.remove();

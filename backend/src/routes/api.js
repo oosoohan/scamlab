@@ -63,6 +63,7 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     found_flags: ev.found_flags,
     flag_total: ev.flag_total,
     report_ready: ev.report_ready,
+    game_over: ev.game_over,
     stages: ev.stages.map(s => ({
       scenario_id: s.scenario_id, cleared: s.cleared, failed: s.failed, best_trust: s.best_trust,
       reveal: s.cleared || s.failed ? revealOf(content.scenarioById.get(s.scenario_id)) : null
@@ -131,6 +132,7 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     if (!content.scenarioById.has(scenarioId)) throw bad('INVALID_SCENARIO', '없는 사건입니다.');
     // 이미 막아 낸 사건이면 자동으로 '다시 해 보기'
     const ev = await evaluate(session);
+    if (ev.game_over) throw new ApiError(409, 'GAME_OVER', '게임이 끝났습니다. 리포트를 확인하거나 새로 시작하세요.');
     const isReplay = ev.stages.find(s => s.scenario_id === scenarioId).cleared;
     const attempt = await store.startAttempt(session.id, scenarioId, isReplay);
     res.status(201).json(await attemptView(attempt, session));
@@ -173,11 +175,23 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
       game_over_reason: null,
       stage_result: null
     };
-    const attempts = await store.sessionAttempts(session.id);
+    let attempts = await store.sessionAttempts(session.id);
+    let ev = await evaluate(session, attempts);
+    // 이 답으로 잃은 돈 (규칙 v2의 치명타, 본 도전일 때만): 방금 기록한 치명타가 가장 마지막 손실이다
+    const loss = option.type === 'wrong' && !rules.wrong_is_fatal && !attempt.is_replay ? ev.last_loss : 0;
+    // 규칙 v2: 잔고가 0원이 되면 대화가 남아 있어도 그 자리에서 실패 → 게임 끝
+    if (rules.game_over_ends_session && !attempt.is_replay && after.status === 'playing' && ev.balance <= 0) {
+      await store.endAttempt(attempt.id, 'failed');
+      after.status = 'failed'; after.failCause = 'bankrupt';
+      body.status = 'failed'; body.fail_cause = 'bankrupt'; body.next_turn_id = null;
+      attempts = await store.sessionAttempts(session.id);
+      ev = await evaluate(session, attempts);
+    }
     if (after.status === 'failed') {
       // 진짜 메시지에서 실패한 경우(과잉 의심 등)는 '사기꾼에게 끌려갔다'는 문구를 붙이지 않는다
       const lead = !scenario.is_scam ? null
-        : after.failCause === 'trust_depleted' ? rules.messages.trust_depleted : null;
+        : after.failCause === 'trust_depleted' ? rules.messages.trust_depleted
+        : after.failCause === 'bankrupt' ? rules.messages.bankrupt : null;
       body.game_over_reason = lead ? `${lead}\n\n${scenario.game_over_reason}` : scenario.game_over_reason;
     }
     if (after.status !== 'playing') body.reveal = revealOf(scenario);
@@ -187,9 +201,8 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
         .stages.find(s => s.scenario_id === scenario.id).best_trust;
       body.stage_result = { trust: after.trust, previous_best: prevBest, improved: prevBest == null || after.trust > prevBest };
     }
-    const ev = await evaluate(session, attempts);
-    // 이 답으로 잃은 돈 (규칙 v2의 치명타, 본 도전일 때만): 방금 기록한 치명타가 가장 마지막 손실이다
-    body.loss = option.type === 'wrong' && !rules.wrong_is_fatal && !attempt.is_replay ? ev.last_loss : 0;
+    body.loss = loss;
+    body.game_over = ev.game_over;
     body.summary = summaryOf(ev);
     return body;
   };
@@ -263,8 +276,17 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     const rules = loadRules(session.scoring_version);
     let charged = false;
     if (attempt.status === 'playing' && !attempt.is_replay && !rules.wrong_is_fatal) charged = await store.recordLinkClick(attempt.id, url);
-    const ev = await evaluate(session, await store.sessionAttempts(session.id));
-    res.json({ charged, loss: charged ? ev.last_loss : 0, summary: summaryOf(ev) });
+    let ev = await evaluate(session, await store.sessionAttempts(session.id));
+    const loss = charged ? ev.last_loss : 0;
+    const body = { charged, loss, status: attempt.status === 'playing' ? 'continue' : attempt.status };
+    // 규칙 v2: 링크로 잔고가 0원이 되면 그 자리에서 실패 → 게임 끝
+    if (charged && rules.game_over_ends_session && ev.balance <= 0) {
+      await store.endAttempt(attempt.id, 'failed');
+      ev = await evaluate(session, await store.sessionAttempts(session.id));
+      Object.assign(body, { status: 'failed', fail_cause: 'bankrupt', reveal: revealOf(scenario),
+        game_over_reason: `${rules.messages.bankrupt}\n\n${scenario.game_over_reason}` });
+    }
+    res.json({ ...body, game_over: ev.game_over, summary: summaryOf(ev) });
   }));
 
   /* ---------- 마무리·리포트 ---------- */

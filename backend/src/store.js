@@ -47,6 +47,11 @@ function createStore(db) {
       return db.batch(stmts, 'write');
     },
 
+    /** 진행 중인 도전을 끝낸다 (규칙 v2: 잔고가 0원이 되면 그 자리에서 실패) */
+    endAttempt: (attemptId, status) => db.execute({
+      sql: `UPDATE stage_attempts SET status = ?, ended_at = ${NOW} WHERE id = ? AND status = 'playing'`, args: [status, attemptId]
+    }),
+
     /** 링크를 연 기록. 같은 도전에서 같은 링크를 다시 열면 기록하지 않고 false */
     async recordLinkClick(attemptId, url) {
       const r = await db.execute({ sql: 'INSERT OR IGNORE INTO link_clicks (attempt_id, url) VALUES (?, ?)', args: [attemptId, url] });
