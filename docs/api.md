@@ -126,6 +126,13 @@
 | `cleared` | 사건 방어 성공 | `stage_result: { trust, previous_best, improved }` |
 | `failed` | 게임 오버 | `fail_cause`: `fatal`(치명적 실수) / `trust_depleted`(신뢰도 0), `game_over_reason` |
 
+**규칙 v2 (기본)**: 치명타(`wrong`)는 즉시 실패가 아니라 `wrong_loss`(40만 원)와 신뢰도 25를 잃고 대화가 이어진다. 신뢰도가 0이 되면 `fail_cause: "trust_depleted"`로 실패. 응답의 `loss`(이 답으로 잃은 돈), `summary.balance`(게임 전체 누적 잔고), `summary.lost`를 쓴다. 잃은 돈은 다시 도전해도 돌아오지 않고, 다시 해 보기(replay)에서는 돈을 잃지 않는다.
+
+### `POST /attempts/:id/link-clicks`  ← 대화 속 링크 열기
+요청 `{ "url": "http://cy-1ogis.example/a8Kx" }` → `{ "charged": true, "loss": 200000, "summary": { ... } }`
+
+규칙 v2에서 진행 중인 본 도전이면 링크를 열 때마다 `link_loss`(20만 원)가 빠진다. 같은 도전에서 같은 링크는 한 번만. 이 사건 메시지에 없는 링크는 `400 INVALID_URL`.
+
 대화가 끝나면(`cleared`/`failed`) `reveal: { is_scam, title, scam_type, lessons }`이 함께 온다. 세션 요약의 `stages[].reveal`도 한 번이라도 끝낸 메시지만 채워진다.
 
 `revealed_flags`는 이 메시지에 들어 있는 위험 신호 id 목록이다 (서버가 시드할 때 미리 계산해 둔 값).

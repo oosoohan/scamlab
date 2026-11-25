@@ -47,17 +47,26 @@ function createStore(db) {
       return db.batch(stmts, 'write');
     },
 
-    /** 세션의 모든 도전과 답안을 평가 함수가 받는 모양으로 */
+    /** 링크를 연 기록. 같은 도전에서 같은 링크를 다시 열면 기록하지 않고 false */
+    async recordLinkClick(attemptId, url) {
+      const r = await db.execute({ sql: 'INSERT OR IGNORE INTO link_clicks (attempt_id, url) VALUES (?, ?)', args: [attemptId, url] });
+      return r.rowsAffected > 0;
+    },
+
+    /** 세션의 모든 도전과 답안(+연 링크)을 평가 함수가 받는 모양으로 */
     async sessionAttempts(sessionId) {
-      const [atRs, ansRs] = await db.batch([
+      const [atRs, ansRs, clickRs] = await db.batch([
         { sql: 'SELECT * FROM stage_attempts WHERE session_id = ? ORDER BY id', args: [sessionId] },
         { sql: `SELECT a.attempt_id, a.turn_id, a.option_id, a.hint_used FROM answers a
                 JOIN stage_attempts s ON s.id = a.attempt_id JOIN turns t ON t.id = a.turn_id
-                WHERE s.session_id = ? ORDER BY a.attempt_id, t.turn_no`, args: [sessionId] }
+                WHERE s.session_id = ? ORDER BY a.attempt_id, t.turn_no`, args: [sessionId] },
+        { sql: `SELECT c.attempt_id, c.url FROM link_clicks c JOIN stage_attempts s ON s.id = c.attempt_id
+                WHERE s.session_id = ? ORDER BY c.clicked_at`, args: [sessionId] }
       ], 'read');
-      const attempts = rows(atRs).map(a => ({ ...a, answers: [] }));
+      const attempts = rows(atRs).map(a => ({ ...a, answers: [], clicks: [] }));
       const byId = new Map(attempts.map(a => [a.id, a]));
       for (const ans of rows(ansRs)) byId.get(ans.attempt_id).answers.push(ans);
+      for (const c of rows(clickRs)) byId.get(c.attempt_id).clicks.push(c.url);
       return attempts;
     },
 

@@ -77,7 +77,7 @@ turso db tokens create scamlab     # Auth Token
 ## 운영 메모
 
 - **문제 수정**: `content/*.json` 고치고 PR → merge. 배포 후 서버가 켜질 때 자동으로 DB에 반영된다.
-- **채점 규칙 변경**: `backend/rules/v2.json`을 만들고 Vercel 환경변수 `SCORING_VERSION=v2`. 예전 기록은 예전 규칙으로 채점된다.
+- **채점 규칙**: 기본은 `backend/rules/v2.json`(치명타·링크마다 돈이 조금씩 빠지고 대화는 이어짐). Vercel 환경변수에 `SCORING_VERSION=v1`이 남아 있으면 예전 규칙(치명타 즉시 실패)이 되니 지우거나 `v2`로 바꾼다. 세션마다 버전이 저장되므로 예전 기록은 예전 규칙으로 채점된다.
 - **문항 통계**: Vercel 환경변수에 `ADMIN_TOKEN`을 정하면 `GET /api/stats/items` (헤더 `X-Admin-Token`)이 열린다.
 - **로컬에서 Turso에 붙여 보기**: `backend/.env`에 두 값을 넣고 `npm start`.
 - **무료 한도(2026-11 기준)**: Turso 무료 — 저장 5GB, 월 쓰기 1천만 행. 이 게임은 답 하나에 한 행이라 학교 프로젝트 규모로 충분하다.

@@ -490,6 +490,8 @@
   .fw-x { border:0; background:none; font-size:22px; line-height:1; color:#333; cursor:pointer; padding:2px 6px; }
   .fw-url { flex:1; min-width:0; display:flex; align-items:center; gap:6px; background:#f1f3f5; border-radius:10px; padding:8px 10px; font-size:13px; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .fw-url i { font-style:normal; color:#9aa0a6; }
+  .fw-loss { background:#d61f2c; color:#fff; padding:10px 14px; font-size:14px; line-height:1.45; animation:fwIn .25s ease-out; }
+  .fw-loss small { display:block; font-size:12px; opacity:.85; }
   .fw-body { flex:1; overflow:auto; padding:18px 16px 24px; }
   .fw-card { background:#fff; border-radius:14px; padding:18px 16px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
   .fw-card h3 { font-size:19px; margin:0 0 4px; }
@@ -1108,7 +1110,9 @@ const THEMES = {
 // 기본값. 세션을 만들면 서버 규칙(rules/v1.json) 값으로 바뀐다
 let START_BALANCE = 3200000;
 let TRAP_PENALTY = 25;
-function applyRules(r) { if (!r) return; START_BALANCE = r.start_balance; TRAP_PENALTY = r.trap_penalty; }
+// 규칙 v2(MONEY): 치명타는 WRONG_LOSS원, 링크 열기는 LINK_LOSS원을 잃고 대화가 이어진다. v1이면 치명타 즉시 실패
+let MONEY = false, WRONG_LOSS = 0, LINK_LOSS = 0;
+function applyRules(r) { if (!r) return; START_BALANCE = r.start_balance; TRAP_PENALTY = r.trap_penalty; MONEY = !!r.money_mode; WRONG_LOSS = r.wrong_loss || 0; LINK_LOSS = r.link_loss || 0; }
 
 /* ---------- 상태 ---------- */
 // sessionId·attemptId: 서버 기록 id. 점수·오답 노트는 서버가 계산하고, 여기 stats·stageMiss는 화면 표시용이다
@@ -1406,6 +1410,8 @@ async function handleResult(r) {
   if (r.reveal) applyReveal(stage().stage_id, r.reveal);
   S.stats[r.type]++;
   S.trust = r.trust;
+  if (MONEY && r.summary) S.balance = r.summary.balance;   // v2: 돈은 서버가 누적으로 계산
+  if (r.loss) { S.attemptLoss += r.loss; addLedger('out', `${stage().scammer_profile.name} · 송금`, -r.loss, '치명적 실수'); }
   if (r.type === 'correct') {
     addSys('correct', '✅ 방어 성공', esc(r.feedback));
     await sleep(450); revealFlags(S.hintUsed);
@@ -1418,8 +1424,8 @@ async function handleResult(r) {
     await sleep(1200);
   } else {
     S.stageMiss[stage().stage_id]++;
-    shakePhone(true); flashSiren();
-    addSys('wrong', '❌ 치명적 실수', esc(r.feedback) + modelAnswer(r));
+    updateHud(); shakePhone(true); flashSiren();
+    addSys('wrong', MONEY && r.loss ? `❌ 치명적 실수 · −${won(r.loss).replace('₩', '')}원 · 신뢰도 ${r.trust_delta}` : '❌ 치명적 실수', esc(r.feedback) + modelAnswer(r));
     await sleep(450); revealFlags(S.hintUsed);
     await sleep(1500);
   }
@@ -1467,15 +1473,19 @@ function gameOver(reason) {
   const s = stage(), scam = isScam(s) !== false;
   if (!S.replay) S.failed[s.stage_id] = true;
   if (!scam) return missedLegit(reason);
-  const lost = S.balance;
-  if (!S.replay) { S.balance = 0; if (lost > 0) addLedger('out', `${themeOf(s).title} · 인터넷뱅킹 출금`, -lost, '사기 계좌로 이체'); updateHud(); }
+  const v2 = MONEY;
+  const lost = v2 ? S.attemptLoss : S.balance;
+  if (!S.replay && !v2) { S.balance = 0; if (lost > 0) addLedger('out', `${themeOf(s).title} · 인터넷뱅킹 출금`, -lost, '사기 계좌로 이체'); }
+  updateHud();
   overlay('over', `
     <canvas class="siren" aria-hidden="true"></canvas>
     <div class="eyebrow">메시지 ${posOf(S.stageIdx)} · 게임 오버</div>
     ${revealLine(s)}
     <h1>당했습니다</h1>
     <p>${esc(themeOf(s).title)} · ${esc(s.scam_type)}</p>
+    ${v2 ? `<p style="margin-top:4px;opacity:.8">이번 대화에서 잃은 돈</p>` : ''}
     <div class="big" id="lostNum">${won(lost)}</div>
+    ${v2 ? `<p style="opacity:.8">남은 잔고 <b>${won(S.balance)}</b></p>` : ''}
     <div class="reason">${esc(reason).replace(/\n/g,'<br>')}</div>
     ${lessonBox(s.stage_id)}
     <p class="callout">실제로 돈을 보냈다면 바로 <b>112</b>에 지급정지를 요청하고 <b>1332</b> 금융감독원에 상담하세요.</p>
@@ -1483,12 +1493,13 @@ function gameOver(reason) {
     <button class="btn" id="retryBtn">이 단계 다시 도전</button>
     <button class="btn ghost" id="homeBtn">${S.replay ? '이어서 하기' : '처음으로'}</button>`);
   overSiren = SirenWave.create($('overlayRoot').querySelector('canvas.siren'), { amplitude:.8 }); overSiren.start();
-  animateNum(lost, 0, $('lostNum'));
+  v2 ? animateNum(0, lost, $('lostNum')) : animateNum(lost, 0, $('lostNum'));
   $('retryBtn').onclick = () => { if (S.replay) return startStage(S.stageIdx); restoreBalance(); S.stats.retries++; startStage(S.stageIdx); };
   $('homeBtn').onclick = S.replay ? afterReplay : showTitle;
 }
 // 사기에 당한 뒤 다시 도전하거나 다른 메시지로 넘어가면 훈련용 잔고를 되돌린다
 function restoreBalance() {
+  if (MONEY) return;   // v2: 잃은 돈은 돌아오지 않는다 (누적)
   if (S.balance < START_BALANCE) { addLedger('in', '훈련용 잔고 복구', START_BALANCE - S.balance, '다시 도전'); S.balance = START_BALANCE; updateHud(); }
 }
 // 진짜 메시지를 과잉 의심하거나 무방비로 대해 신뢰도가 바닥난 경우: 돈은 잃지 않지만 놓친 것을 보여 준다
@@ -1779,7 +1790,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('artModa
 async function startStage(idx, replay = false) {
   if (replay && !S.replay) beginReplay();
   closeOverlay();
-  Object.assign(S, { stageIdx:idx, turnIdx:0, trust:100, busy:true, lastBubble:null, attemptId:null });
+  Object.assign(S, { stageIdx:idx, turnIdx:0, trust:100, attemptLoss:0, busy:true, lastBubble:null, attemptId:null });
   const s = stage();
   applyTheme(s.platform);
   $('avatar').textContent = theme().icon;
@@ -1874,6 +1885,7 @@ async function restoreSession() {
   const sum = saved.summary;
   S.sessionId = saved.session_id;
   S.pre = saved.pre_confidence;
+  applyRules(saved.rules);
   S.balance = sum.balance;
   S.rulesSeen = true;
   sum.stages.forEach(st => {
@@ -2028,13 +2040,32 @@ function openFakePage(url) {
   const wrap = document.createElement('div');
   wrap.id = 'fakeWeb'; wrap.className = 'fw'; wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-label', '링크로 열린 웹페이지');
   wrap.innerHTML = `<div class="fw-bar"><button class="fw-x" id="fwBack" aria-label="닫기">✕</button><div class="fw-url"><i>🔒</i>${esc(host)}<i>${esc(url.slice(url.indexOf(host) + host.length))}</i></div></div>
+    <div class="fw-loss" id="fwLoss" role="alert" hidden></div>
     <div class="fw-body">${fakePageHTML(p)}</div><div class="fw-tag">사기 생존기 · 훈련용 가상 페이지 (입력값은 어디에도 저장·전송되지 않습니다)</div>`;
   $('phone').appendChild(wrap);
   const close = () => wrap.remove();
+  let charged = 0;
   $('fwBack').onclick = () => {
     close();
-    addSys('info', '', `🔗 링크를 닫았습니다. 다음부턴 누르기 전에 주소를 보세요: <b>${esc(host)}</b> 는 공식 주소가 아닙니다.`);
+    addSys('info', '', charged
+      ? `🔗 링크를 연 대가로 <b>${won(charged)}</b>을 잃었습니다. 누르기 전에 주소부터 보세요: <b>${esc(host)}</b> 는 공식 주소가 아닙니다.`
+      : `🔗 링크를 닫았습니다. 다음부턴 누르기 전에 주소를 보세요: <b>${esc(host)}</b> 는 공식 주소가 아닙니다.`);
   };
+  // 규칙 v2: 출처 불명 링크는 '여는 순간' 돈이 빠진다 (진행 중인 본 도전만, 같은 링크는 한 번만)
+  if (MONEY && S.attemptId && !S.replay) {
+    ScamApi.linkClick(S.attemptId, url).then(r => {
+      S.balance = r.summary.balance;
+      if (r.charged) {
+        charged = r.loss;
+        S.attemptLoss = (S.attemptLoss || 0) + r.loss;
+        addLedger('out', `${host} · 자동 결제`, -r.loss, '출처 불명 링크');
+        const b = $('fwLoss');
+        if (b) { b.hidden = false; b.innerHTML = `⚠️ 링크에 접속하자마자 <b>${won(r.loss)}</b>이 결제되었습니다<small>남은 잔고 ${won(S.balance)} · 출처 불명 링크는 열기만 해도 위험합니다</small>`; }
+        shakePhone(true); flashSiren();
+      }
+      updateHud();
+    }).catch(() => {});
+  }
   wrap.querySelectorAll('[data-bait]').forEach(el => {
     const fire = e => { e.preventDefault(); el.blur(); caught(p, host, url, wrap); };
     el.addEventListener('focus', fire); el.addEventListener('click', fire);
@@ -2043,13 +2074,12 @@ function openFakePage(url) {
 
 function caught(p, host, url, wrap) {
   if (wrap.querySelector('.fw-catch')) return;
-  // 신뢰도·점수는 서버가 관리하므로 여기서는 깎지 않고, 무엇이 위험했는지만 보여 준다
   const c = document.createElement('div');
   c.className = 'fw-catch';
   c.innerHTML = `<h2>🎣 낚였습니다</h2>
     <p>${esc(p.hit)}</p>
     <div class="dom">이 페이지 주소: <b>${esc(host)}</b><br>진짜 서비스라면 공식 도메인이어야 합니다. 링크로 열린 페이지에서는 아무것도 입력하지 마세요.</div>
-    <p class="pen">실제 상황이었다면 여기서 피해가 시작됩니다.</p>
+    <p class="pen" id="fwPen">실제 상황이었다면 여기서 피해가 시작됩니다.</p>
     <button class="btn" id="fwOut">대화로 돌아가기</button>`;
   wrap.appendChild(c);
   $('fwOut').focus({ preventScroll:true });

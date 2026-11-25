@@ -60,6 +60,9 @@
     getSession: id => request('GET', `/sessions/${id}`),
     forgetSession: () => saveSession(null),
 
+    /** 대화 속 링크를 열었다 → { charged, loss, summary }. 같은 도전에서 같은 링크는 한 번만 돈이 빠진다 */
+    linkClick: (attemptId, url) => request('POST', `/attempts/${attemptId}/link-clicks`, { url }),
+
     /** 사건 시작 (이미 막은 사건이면 서버가 자동으로 다시 해 보기로 만든다) */
     startAttempt: (sessionId, scenarioId) => request('POST', `/sessions/${sessionId}/attempts`, { scenario_id: scenarioId }),
 
