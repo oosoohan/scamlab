@@ -45,6 +45,7 @@
 ```
 
 - `turn_id` = `단계 × 100 + 턴번호` (3단계 2번 턴 → `302`)
+- `features`: 서버가 켜 둔 기능. 지금은 `{ "ai_chat": false }` — 직접 답장(AI)은 `/api/chat`이 생기면 켠다
 - `title`, `icon`이 `null`이면 프론트 `THEMES[platform]` 값을 쓴다 (지금 `themeOf()`와 같음)
 - 메시지 속 위험 신호 하이라이트는 지금처럼 프론트가 `new RegExp(pattern, pattern_flags)`로 처리한다
 
@@ -127,6 +128,24 @@
 
 `revealed_flags`는 이 메시지에 들어 있는 위험 신호 id 목록이다 (서버가 시드할 때 미리 계산해 둔 값).
 
+### `POST /attempts/:id/events`  — 대화 중 사건 (가짜 링크 낚임)
+채팅 속 링크로 열린 가짜 페이지에서 입력칸·버튼을 건드렸을 때. 요청:
+
+```json
+{ "kind": "bait", "turn_id": 103, "url": "https://naverpay-safedeal.co/sell?no=2611-4821", "note": "오답 노트에 보여 줄 해설" }
+```
+
+- `turn_id`는 **지금 답을 기다리는 턴**이어야 한다 (아니면 `409 WRONG_TURN`)
+- `url`은 지금까지 받은 메시지에 실제로 있던 링크여야 한다 (아니면 `400 INVALID_LINK`)
+- 같은 도전에서 같은 링크는 한 번만 감점, 다시 해 보기에서는 감점하지 않음 → `penalized: false`
+
+```json
+{ "penalized": true, "trust": 75, "trust_delta": -25, "status": "continue",
+  "fail_cause": null, "game_over_reason": null, "summary": { "...": "" } }
+```
+
+신뢰도가 0이 되면 `status: "failed"`, `game_over_reason`에 낚임 사유. 낚임은 리포트에서 **빈틈**으로 집계되고(`stats.trap`, 따로 `stats.bait`), 오답 노트에 `kind: "bait"`로 남는다.
+
 ---
 
 ## 4. 마무리·리포트
@@ -171,6 +190,7 @@
 |---|---|
 | 시작 신뢰도 | 100 |
 | 빈틈(trap) | 신뢰도 −25, 0이 되면 실패 |
+| 가짜 링크 낚임(bait) | 신뢰도 −25 (같은 도전·같은 링크는 한 번), 빈틈으로 집계 |
 | 치명적 실수(wrong) | 즉시 실패 |
 | 단계 신뢰도 | 그 사건을 막아 낸 도전 중 최고 기록 |
 | 방어 점수 | `max(0, round(단계 신뢰도 평균) − 재도전×5 − 힌트×1)` |

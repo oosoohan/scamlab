@@ -67,7 +67,7 @@ test('evaluateSession: 프론트 showReport()와 같은 점수·등급', () => {
   // 평균 = round((75 + 100×8) / 9) = round(97.2) = 97,  점수 = 97 − 재도전 1×5 − 힌트 3×1 = 89
   assert.equal(ev.report_ready, true);
   assert.equal(ev.avg_trust, 97);
-  assert.deepEqual(ev.stats, { correct: 57, trap: 1, wrong: 1, hints: 3, retries: 1 });
+  assert.deepEqual(ev.stats, { correct: 57, trap: 1, wrong: 1, hints: 3, retries: 1, bait: 0 });
   assert.equal(ev.score, 89);
   assert.equal(ev.grade.grade, 'A');
   assert.equal(ev.stages.find(s => s.scenario_id === 1).best_trust, 75);

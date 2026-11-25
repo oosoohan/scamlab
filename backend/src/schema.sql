@@ -100,3 +100,16 @@ CREATE TABLE IF NOT EXISTS answers (
   UNIQUE (attempt_id, turn_id)
 );
 CREATE INDEX IF NOT EXISTS idx_answers_turn ON answers(turn_id);
+
+-- 답 말고 대화 중에 일어난 일 (지금은 'bait': 채팅 속 링크로 열린 가짜 페이지에서 정보를 넣으려 한 것)
+-- 같은 도전에서 같은 링크는 한 번만 감점된다.
+CREATE TABLE IF NOT EXISTS attempt_events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id  INTEGER NOT NULL REFERENCES stage_attempts(id) ON DELETE CASCADE,
+  turn_id     INTEGER NOT NULL REFERENCES turns(id),    -- 이 턴에 답하기 전에 일어남
+  kind        TEXT    NOT NULL CHECK (kind IN ('bait')),
+  ref         TEXT    NOT NULL,                         -- bait: 링크 주소
+  note        TEXT,                                     -- bait: 오답 노트에 보여 줄 해설
+  created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (attempt_id, kind, ref)
+);

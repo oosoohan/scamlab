@@ -4,12 +4,15 @@
  * 지금 프론트(index_v2.html)의 계산과 같은 결과를 내도록 맞췄다.
  *  - 단계 신뢰도   : 그 사건을 막아 낸 도전들 중 가장 높은 남은 신뢰도 (다시 해 보기로 최고 기록 갱신)
  *  - 빈틈·치명타·오답 노트·취약 유형 : 본 도전(is_replay=0)만 센다 (다시 해 보기는 연습이라 통계에서 빠짐)
+ *  - 가짜 링크 낚임(bait)            : 빈틈으로 센다 (신뢰도 감점·오답 노트·취약 유형에 반영)
  *  - 재도전 수     : 본 도전 중 실패한 횟수
  *  - 힌트 수       : 본 도전에서 힌트를 쓴 턴 수
  *  - 찾은 위험 신호 : 응답한 모든 턴(다시 해 보기 포함)의 위험 신호 합집합
  *  - 방어 점수     : max(0, round(평균 단계 신뢰도) − 재도전×retry_penalty − 힌트×hint_penalty)
  */
 const { foldAttempt } = require('./attempt');
+
+const hostOf = url => String(url).replace(/^https?:\/\//, '').split(/[/?#]/)[0];
 
 /**
  * @param {object} p
@@ -20,7 +23,7 @@ const { foldAttempt } = require('./attempt');
  * @param {number|null} p.post
  */
 function evaluateSession({ content, attempts, rules, pre = null, post = null }) {
-  const stats = { correct: 0, trap: 0, wrong: 0, hints: 0, retries: 0 };
+  const stats = { correct: 0, trap: 0, wrong: 0, hints: 0, retries: 0, bait: 0 };   // bait(링크 낚임)는 trap에도 포함
   const found = new Set();
   const mistakes = [];
   const stageMap = new Map(content.scenarios.map(s => [s.id, { scenario_id: s.id, cleared: false, best_trust: null, misses: 0, attempts: 0 }]));
@@ -31,11 +34,24 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null }) 
     const stage = stageMap.get(at.scenario_id);
     if (!scenario || !stage) continue; // 숨겨진(비활성) 사건
     const main = !at.is_replay;
-    const result = foldAttempt(scenario, at.answers, rules);
+    const events = at.events || [];
+    const result = foldAttempt(scenario, at.answers, rules, events);
     stage.attempts++;
 
-    for (const a of at.answers) {
-      const turn = content.turnById.get(a.turn_id);
+    // 턴 순서대로: 그 턴의 사건(가짜 링크 낚임) → 그 턴의 답
+    const answerByTurn = new Map(at.answers.map(a => [a.turn_id, a]));
+    for (const turn of scenario.turns) {
+      for (const e of events.filter(ev => ev.turn_id === turn.id)) {
+        if (!main || e.kind !== 'bait') continue;
+        stats.trap++; stats.bait++;
+        stage.misses++;
+        mistakes.push({
+          scenario_id: scenario.id, platform: scenario.platform, turn: turn.turn_no, type: 'trap', kind: 'bait',
+          mine: `링크(${hostOf(e.ref)})를 열고 정보를 입력하려 함`, right: rules.messages.bait_right, why: e.note || ''
+        });
+      }
+      const a = answerByTurn.get(turn.id);
+      if (!a) continue;
       turn.flags.forEach(f => found.add(f));
       if (!main) continue;
       const opt = content.optionById.get(a.option_id);

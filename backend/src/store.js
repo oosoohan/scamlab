@@ -28,6 +28,16 @@ function createStore(db) {
     answersOfAttempt: attemptId => all(`SELECT a.turn_id, a.option_id, a.hint_used FROM answers a JOIN turns t ON t.id = a.turn_id
                                         WHERE a.attempt_id = ? ORDER BY t.turn_no`, [attemptId]),
 
+    eventsOfAttempt: attemptId => all('SELECT turn_id, kind, ref, note FROM attempt_events WHERE attempt_id = ? ORDER BY id', [attemptId]),
+
+    /** 대화 중 사건(가짜 링크 낚임 등) 저장 + (끝났으면) 도전 상태 변경. 같은 링크는 UNIQUE 제약으로 한 번만 */
+    recordEvent(attemptId, turnId, kind, ref, note, endStatus) {
+      const stmts = [{ sql: 'INSERT INTO attempt_events (attempt_id, turn_id, kind, ref, note) VALUES (?, ?, ?, ?, ?)',
+                       args: [attemptId, turnId, kind, ref, note] }];
+      if (endStatus) stmts.push({ sql: `UPDATE stage_attempts SET status = ?, ended_at = ${NOW} WHERE id = ?`, args: [endStatus, attemptId] });
+      return db.batch(stmts, 'write');
+    },
+
     /** 진행 중인 도전은 버리고(abandoned) 새 도전을 만든다 */
     async startAttempt(sessionId, scenarioId, isReplay) {
       const [, ins] = await db.batch([
@@ -47,17 +57,20 @@ function createStore(db) {
       return db.batch(stmts, 'write');
     },
 
-    /** 세션의 모든 도전과 답안을 평가 함수가 받는 모양으로 */
+    /** 세션의 모든 도전과 답안·사건을 평가 함수가 받는 모양으로 */
     async sessionAttempts(sessionId) {
-      const [atRs, ansRs] = await db.batch([
+      const [atRs, ansRs, evRs] = await db.batch([
         { sql: 'SELECT * FROM stage_attempts WHERE session_id = ? ORDER BY id', args: [sessionId] },
         { sql: `SELECT a.attempt_id, a.turn_id, a.option_id, a.hint_used FROM answers a
                 JOIN stage_attempts s ON s.id = a.attempt_id JOIN turns t ON t.id = a.turn_id
-                WHERE s.session_id = ? ORDER BY a.attempt_id, t.turn_no`, args: [sessionId] }
+                WHERE s.session_id = ? ORDER BY a.attempt_id, t.turn_no`, args: [sessionId] },
+        { sql: `SELECT e.attempt_id, e.turn_id, e.kind, e.ref, e.note FROM attempt_events e
+                JOIN stage_attempts s ON s.id = e.attempt_id WHERE s.session_id = ? ORDER BY e.id`, args: [sessionId] }
       ], 'read');
-      const attempts = rows(atRs).map(a => ({ ...a, answers: [] }));
+      const attempts = rows(atRs).map(a => ({ ...a, answers: [], events: [] }));
       const byId = new Map(attempts.map(a => [a.id, a]));
       for (const ans of rows(ansRs)) byId.get(ans.attempt_id).answers.push(ans);
+      for (const ev of rows(evRs)) byId.get(ev.attempt_id).events.push(ev);
       return attempts;
     },
 
