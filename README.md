@@ -28,6 +28,7 @@ scamlab/
 │   ├── rules/v1.json      채점 규칙 (신뢰도 감점, 등급 기준 등)
 │   ├── scripts/           extract-content.js, seed.js
 │   └── test/              node:test 단위·통합 테스트
+├── package.json           ← 루트 작업 공간 (backend를 workspace로 묶음, Node 22)
 ├── api/index.js           ← Vercel 함수 진입점
 ├── vercel.json            ← Vercel 설정 (화면=frontend/, /api=함수, 서울 리전)
 ├── content/               ← 문제 원본 (시나리오·위험 신호·교훈 JSON)
@@ -46,12 +47,13 @@ DB는 SQLite 호환 클라이언트(`@libsql/client`) 하나로 두 곳에 붙�
 - 배포: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` 환경변수가 있으면 Turso 클라우드 DB
 
 ```bash
-cd backend
-npm install
+npm install       # 저장소 맨 위에서 한 번 (backend 의존성까지 설치됨)
 npm start         # http://localhost:3000 을 브라우저로 열면 게임 (프론트 + /api 같은 주소)
 npm run dev       # 파일 저장하면 자동 재시작
 npm test          # 채점·API 테스트
 ```
+
+`backend/` 폴더 안에서 `npm start`, `npm test`를 실행해도 똑같이 동작한다 (npm workspaces).
 
 설정은 `backend/.env.example`을 `backend/.env`로 복사해서 바꾼다.
 
