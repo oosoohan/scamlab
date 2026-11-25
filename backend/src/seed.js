@@ -43,12 +43,12 @@ async function seedContent(db, content = loadContentFiles()) {
   add('DELETE FROM lessons');
 
   for (const s of scenarios) {
-    add(`INSERT INTO scenarios (id, sort_order, scam_type, platform, title, icon, scammer_name, scammer_status, game_over_reason, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    add(`INSERT INTO scenarios (id, sort_order, scam_type, platform, title, icon, scammer_name, scammer_status, game_over_reason, is_active, is_scam)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
          ON CONFLICT(id) DO UPDATE SET sort_order=excluded.sort_order, scam_type=excluded.scam_type, platform=excluded.platform,
            title=excluded.title, icon=excluded.icon, scammer_name=excluded.scammer_name, scammer_status=excluded.scammer_status,
-           game_over_reason=excluded.game_over_reason, is_active=1`,
-        [s.stage_id, s.order, s.scam_type, s.platform, s.title, s.icon, s.scammer_profile.name, s.scammer_profile.status_message, s.game_over_reason]);
+           game_over_reason=excluded.game_over_reason, is_active=1, is_scam=excluded.is_scam`,
+        [s.stage_id, s.order, s.scam_type, s.platform, s.title, s.icon, s.scammer_profile.name, s.scammer_profile.status_message, s.game_over_reason, s.is_scam === false ? 0 : 1]);
     stats.scenarios++;
     for (const t of s.turns) {
       const turnId = turnIdOf(s.stage_id, t.turn);

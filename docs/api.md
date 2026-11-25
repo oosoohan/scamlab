@@ -23,29 +23,29 @@
 ## 1. 콘텐츠
 
 ### `GET /content`
-시나리오·턴·선택지·위험 신호·교훈. **선택지의 정답 여부(`type`)와 피드백, 게임오버 사유는 들어 있지 않다** — 답을 제출해야 서버가 알려 준다. `ETag`를 지원하므로 브라우저 캐시가 그대로 쓰인다.
+메시지(시나리오)·턴·선택지·위험 신호. **선택지의 정답 여부(`type`)와 피드백, 게임오버 사유, 그리고 사기인지 진짜인지(`is_scam`)와 그걸 드러내는 `title`·`scam_type`·`lessons`는 들어 있지 않다** — 대화를 끝내야 서버가 `reveal`로 알려 준다. `ETag`를 지원하므로 브라우저 캐시가 그대로 쓰인다.
 
 ```json
 {
   "scenarios": [{
     "stage_id": 1,
-    "scam_type": "중고거래 3자 사기 및 가짜 안전결제 URL",
     "platform": "Karrot",
-    "title": null, "icon": null,
+    "icon": null,
     "scammer_profile": { "name": "미니멀라이프", "status_message": "매너거래 원해요" },
     "turns": [{
       "turn_id": 101, "turn": 1,
       "scammer_msg": "안녕하세요~ 맥북 프로 올리신거 ...",
       "options": [{ "option_id": "o_9fa8747c", "text": "네~ 2만원 빼드릴게요 ..." }, "..."]
-    }],
-    "lessons": ["거래 대화와 결제는 처음부터 끝까지 앱 안에서만 합니다.", "..."]
+    }]
   }],
   "flags": [{ "id": "link", "label": "출처 불명 링크", "pattern": "(https?:\\/\\/...)", "pattern_flags": "g", "why": "..." }]
 }
 ```
 
 - `turn_id` = `단계 × 100 + 턴번호` (3단계 2번 턴 → `302`)
-- `title`, `icon`이 `null`이면 프론트 `THEMES[platform]` 값을 쓴다 (지금 `themeOf()`와 같음)
+- 메시지는 14개: 사기 9(`stage_id` 1~9) + 진짜 5(10~14). 프론트는 세션마다 순서를 섞어 알림함에 하나씩 도착시킨다
+- 진짜 메시지의 선택지는 `correct` 1개 + `trap` 2개(과잉 의심 / 무방비)이고 `wrong`(치명타)은 없다. 진짜 메시지에서 실패해도 잔고는 줄지 않는다
+- `icon`이 `null`이면 프론트 `THEMES[platform]` 값을 쓴다
 - 메시지 속 위험 신호 하이라이트는 지금처럼 프론트가 `new RegExp(pattern, pattern_flags)`로 처리한다
 
 ---
@@ -80,7 +80,8 @@
   "found_flags": ["offapp", "safepay", "avoid"],
   "flag_total": 30,
   "report_ready": false,
-  "stages": [{ "scenario_id": 1, "cleared": true, "best_trust": 75 }, "..."],
+  "stages": [{ "scenario_id": 1, "cleared": true, "failed": true, "best_trust": 75,
+               "reveal": { "is_scam": true, "title": "중고거래 사기", "scam_type": "...", "lessons": ["..."] } }, "..."],
   "avg_trust": null
 }
 ```
@@ -125,6 +126,8 @@
 | `cleared` | 사건 방어 성공 | `stage_result: { trust, previous_best, improved }` |
 | `failed` | 게임 오버 | `fail_cause`: `fatal`(치명적 실수) / `trust_depleted`(신뢰도 0), `game_over_reason` |
 
+대화가 끝나면(`cleared`/`failed`) `reveal: { is_scam, title, scam_type, lessons }`이 함께 온다. 세션 요약의 `stages[].reveal`도 한 번이라도 끝낸 메시지만 채워진다.
+
 `revealed_flags`는 이 메시지에 들어 있는 위험 신호 id 목록이다 (서버가 시드할 때 미리 계산해 둔 값).
 
 ### `POST /attempts/:id/free-answers`  ← 직접 답장 (AI 채점)
@@ -166,9 +169,11 @@
 {
   "scoring_version": "v1",
   "report_ready": true,
-  "progress": { "cleared": 9, "total": 9 },
+  "progress": { "cleared": 14, "total": 14 },
   "balance": 3200000,
-  "stages": [{ "scenario_id": 1, "cleared": true, "best_trust": 75, "misses": 2, "attempts": 3 }],
+  "judgment": { "scam_total": 9, "scam_first_try": 8, "legit_total": 5, "legit_first_try": 5 },
+  "stages": [{ "scenario_id": 1, "is_scam": true, "cleared": true, "failed": true, "first_try": false, "best_trust": 75, "misses": 2, "attempts": 3 }],
+  "reveals": { "1": { "is_scam": true, "title": "중고거래 사기", "scam_type": "...", "lessons": ["..."] }, "...": {} },
   "found_flags": ["link", "..."], "flag_total": 30,
   "stats": { "correct": 57, "trap": 1, "wrong": 1, "hints": 3, "retries": 1 },
   "weak_scenarios": [1],

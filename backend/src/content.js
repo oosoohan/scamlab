@@ -18,6 +18,7 @@ async function loadContent(db) {
   const scenarioById = new Map();
 
   for (const s of scenarios) {
+    s.is_scam = s.is_scam == null ? true : !!s.is_scam;
     s.turns = [];
     s.lessons = [];
     scenarioById.set(s.id, s);
@@ -39,14 +40,15 @@ async function loadContent(db) {
   return { scenarios, flags, optionById, turnById, scenarioById };
 }
 
-/** 브라우저로 보내는 콘텐츠. 정답 여부(type)·피드백·게임오버 사유는 빼고 보낸다. */
+/**
+ * 브라우저로 보내는 콘텐츠. 정답 여부(type)·피드백·게임오버 사유는 빼고 보낸다.
+ * 사기인지 진짜인지(is_scam)와 그걸 드러내는 제목·유형·교훈도 빼고, 대화가 끝났을 때 revealOf()로 알려 준다.
+ */
 function publicContent(content) {
   return {
     scenarios: content.scenarios.map(s => ({
       stage_id: s.id,
-      scam_type: s.scam_type,
       platform: s.platform,
-      title: s.title,
       icon: s.icon,
       scammer_profile: { name: s.scammer_name, status_message: s.scammer_status },
       turns: s.turns.map(t => ({
@@ -54,11 +56,13 @@ function publicContent(content) {
         turn: t.turn_no,
         scammer_msg: t.scammer_msg,
         options: t.options.map(o => ({ option_id: o.id, text: o.text }))
-      })),
-      lessons: s.lessons
+      }))
     })),
     flags: content.flags
   };
 }
 
-module.exports = { loadContent, publicContent };
+/** 대화가 끝난 사건의 정체: 사기였는지, 어떤 수법(또는 어떤 정상 메시지)이었는지, 교훈 */
+const revealOf = s => ({ is_scam: s.is_scam, title: s.title, scam_type: s.scam_type, lessons: s.lessons });
+
+module.exports = { loadContent, publicContent, revealOf };

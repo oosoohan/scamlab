@@ -49,7 +49,8 @@ const SYSTEM = `너는 대학생·사회초년생 대상 금융사기 예방 교
 
 function buildPrompt({ scenario, turn, nextTurn, text }) {
   const ex = turn.options.map(o => `- [${o.type}] ${clip(o.text, 160)}`).join('\n');
-  return `[사기 유형] ${clip(scenario.scam_type, 120)} (${clip(scenario.title, 30)})
+  return `[이 메시지의 정체] ${scenario.is_scam === false ? '사기가 아닌 진짜(정상) 메시지다. 과잉 의심(차단·무시)은 trap, 공식 경로로 확인하며 정상 대응하면 correct다.' : '사기 메시지다.'}
+[유형] ${clip(scenario.scam_type, 120)} (${clip(scenario.title, 30)})
 [사기꾼 이름] ${clip(scenario.scammer_name, 40)}
 [방금 사기꾼이 보낸 메시지]
 ${clip(turn.scammer_msg, 500)}

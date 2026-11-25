@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
-const { publicContent } = require('../content');
+const { publicContent, revealOf } = require('../content');
 const { foldAttempt } = require('../game/attempt');
 const { evaluateSession } = require('../game/evaluate');
 const { loadRules, CURRENT_VERSION } = require('../game/rules');
@@ -48,15 +48,21 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     pre: session.pre_confidence, post: session.post_confidence
   });
   /** 화면 위 HUD·오른쪽 메뉴에 필요한 만큼만 */
+  // 사기인지 진짜인지는 그 사건 대화를 끝까지 한 번이라도 마친 뒤에만 알려 준다
   const summaryOf = ev => ({
     balance: ev.balance,
     progress: ev.progress,
     found_flags: ev.found_flags,
     flag_total: ev.flag_total,
     report_ready: ev.report_ready,
-    stages: ev.stages.map(s => ({ scenario_id: s.scenario_id, cleared: s.cleared, best_trust: s.best_trust })),
+    stages: ev.stages.map(s => ({
+      scenario_id: s.scenario_id, cleared: s.cleared, failed: s.failed, best_trust: s.best_trust,
+      reveal: s.cleared || s.failed ? revealOf(content.scenarioById.get(s.scenario_id)) : null
+    })),
     avg_trust: ev.avg_trust
   });
+  /** 리포트에는 모든 사건의 정체를 붙인다 (리포트는 모든 사건을 마친 뒤에만 열린다) */
+  const withReveals = ev => ({ ...ev, reveals: Object.fromEntries(content.scenarios.map(s => [s.id, revealOf(s)])) });
   const attemptView = async (attempt, session) => {
     const scenario = content.scenarioById.get(attempt.scenario_id);
     const r = foldAttempt(scenario, await store.answersOfAttempt(attempt.id), loadRules(session.scoring_version));
@@ -160,10 +166,12 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     };
     const attempts = await store.sessionAttempts(session.id);
     if (after.status === 'failed') {
-      body.game_over_reason = after.failCause === 'trust_depleted'
+      // 진짜 메시지에서 실패한 경우(과잉 의심 등)는 '사기꾼에게 끌려갔다'는 문구를 붙이지 않는다
+      body.game_over_reason = after.failCause === 'trust_depleted' && scenario.is_scam
         ? `${rules.messages.trust_depleted}\n\n${scenario.game_over_reason}`
         : scenario.game_over_reason;
     }
+    if (after.status !== 'playing') body.reveal = revealOf(scenario);
     if (after.status === 'cleared') {
       // 다시 해 보기라면 이번 도전 전의 최고 기록과 비교해서 알려 준다
       const prevBest = (await evaluate(session, attempts.filter(a => a.id !== attempt.id)))
@@ -222,7 +230,8 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
       console.error('AI 채점 실패:', e.cause || e);
       throw new ApiError(503, 'AI_FAILED', 'AI 채점에 실패했습니다. 선택지로 진행해 주세요.');
     }
-    const option = ctx.turn.options.find(o => o.type === verdict.type);
+    // 진짜 메시지 턴에는 치명타(wrong) 선택지가 없을 수 있다 → 빈틈으로 기록
+    const option = ctx.turn.options.find(o => o.type === verdict.type) || ctx.turn.options.find(o => o.type === 'trap');
     const body = await applyOption({ attempt, session, ...ctx, option, hintUsed: hint_used });
     // AI 설명이 있으면 그걸 보여 주고, 같은 상황의 모범 답안(정답 선택지)도 함께 알려 준다
     if (verdict.feedback) body.feedback = verdict.feedback;
@@ -240,14 +249,14 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     const ev = await evaluate(session);
     if (!ev.report_ready) throw new ApiError(409, 'NOT_READY', '모든 사건을 막아 낸 뒤에 리포트를 볼 수 있습니다.', { progress: ev.progress });
     await store.finishSession(session.id, post);
-    res.json(await evaluate(await store.getSession(session.id)));
+    res.json(withReveals(await evaluate(await store.getSession(session.id))));
   }));
 
   router.get('/sessions/:id/report', h(async (req, res) => {
     const session = await ownSession(req, req.params.id);
     const ev = await evaluate(session);
     if (!ev.report_ready) throw new ApiError(409, 'NOT_READY', '모든 사건을 막아 낸 뒤에 리포트를 볼 수 있습니다.', { progress: ev.progress });
-    res.json(ev);
+    res.json(withReveals(ev));
   }));
 
   /* ---------- 운영자용 문항 통계 (ADMIN_TOKEN을 설정했을 때만 열림) ---------- */

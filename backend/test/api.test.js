@@ -11,13 +11,13 @@ test('API 흐름', async t => {
   t.after(() => srv.close());
   const turnsOf = id => content.scenarioById.get(id).turns;
 
-  await t.test('GET /content 에는 정답·피드백·게임오버 사유가 없다', async () => {
+  await t.test('GET /content 에는 정답·피드백·게임오버 사유·사기 여부가 없다', async () => {
     const r = await call('GET', '/content');
     assert.equal(r.status, 200);
-    assert.equal(r.body.scenarios.length, 9);
+    assert.equal(r.body.scenarios.length, 14);
     assert.equal(r.body.flags.length, 30);
     const raw = JSON.stringify(r.body);
-    for (const key of ['"type"', '"feedback"', 'game_over_reason', 'correct', 'trap']) assert.ok(!raw.includes(key), key);
+    for (const key of ['"type"', '"feedback"', 'game_over_reason', 'correct', 'trap', 'is_scam', '"title"', 'scam_type', 'lessons']) assert.ok(!raw.includes(key), key);
     assert.match(r.body.scenarios[0].turns[0].options[0].option_id, /^o_[0-9a-f]{8}$/);
   });
 
@@ -56,6 +56,9 @@ test('API 흐름', async t => {
     assert.equal(r.body.fail_cause, 'fatal');
     assert.ok(r.body.game_over_reason.length > 10);
     assert.equal(r.body.summary.balance, 0);
+    // 끝나면 정체를 알려 준다
+    assert.equal(r.body.reveal.is_scam, true);
+    assert.ok(r.body.reveal.lessons.length > 0);
     // 끝난 도전에는 더 답할 수 없다
     assert.equal((await answer(a.attempt_id, turnsOf(1)[1], 'correct')).status, 409);
   });
@@ -90,15 +93,17 @@ test('API 흐름', async t => {
   });
 
   await t.test('나머지 사건 클리어 → 마무리 → 리포트', async () => {
-    for (const sid of [2, 3, 4, 5, 6, 7, 8, 9]) {
+    for (const sid of [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]) {
       const a = (await call('POST', `/sessions/${sessionId}/attempts`, { scenario_id: sid }, TOKEN)).body;
       for (const turn of turnsOf(sid)) await answer(a.attempt_id, turn, 'correct');
     }
     const r = await call('POST', `/sessions/${sessionId}/finish`, { post_confidence: 4 }, TOKEN);
     assert.equal(r.status, 200);
-    // 평균 round((75+100*8)/9)=97, 재도전 1회 −5 → 92 → A
-    assert.equal(r.body.avg_trust, 97);
-    assert.equal(r.body.score, 92);
+    // 평균 round((75+100*13)/14)=98, 재도전 1회 −5 → 93 → A
+    assert.equal(r.body.avg_trust, 98);
+    assert.equal(r.body.score, 93);
+    assert.equal(Object.keys(r.body.reveals).length, 14);
+    assert.deepEqual(r.body.judgment, { scam_total: 9, scam_first_try: 8, legit_total: 5, legit_first_try: 5 });
     assert.equal(r.body.grade.grade, 'A');
     assert.equal(r.body.confidence.delta, 2);
   });

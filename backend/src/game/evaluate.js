@@ -23,7 +23,7 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null }) 
   const stats = { correct: 0, trap: 0, wrong: 0, hints: 0, retries: 0 };
   const found = new Set();
   const mistakes = [];
-  const stageMap = new Map(content.scenarios.map(s => [s.id, { scenario_id: s.id, cleared: false, best_trust: null, misses: 0, attempts: 0 }]));
+  const stageMap = new Map(content.scenarios.map(s => [s.id, { scenario_id: s.id, is_scam: s.is_scam !== false, cleared: false, failed: false, first_try: null, best_trust: null, misses: 0, attempts: 0 }]));
   let lastMainFailed = false;
 
   for (const at of attempts) {
@@ -45,19 +45,23 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null }) 
         const right = turn.options.find(o => o.type === 'correct');
         stage.misses++;
         mistakes.push({
-          scenario_id: scenario.id, platform: scenario.platform, turn: turn.turn_no, type: opt.type,
+          scenario_id: scenario.id, is_scam: scenario.is_scam !== false, platform: scenario.platform, turn: turn.turn_no, type: opt.type,
           mine: opt.text, right: right.text, why: right.feedback
         });
       }
     }
 
+    if (result.status === 'failed') stage.failed = true;
+    // 첫 본 도전의 결과 = 처음 봤을 때 제대로 판단했는지
+    if (main && stage.first_try === null && result.status !== 'playing') stage.first_try = result.status === 'cleared';
     if (result.status === 'cleared') {
       stage.cleared = true;
       stage.best_trust = Math.max(stage.best_trust ?? 0, result.trust);
     }
     if (main) {
       if (result.status === 'failed') stats.retries++;
-      lastMainFailed = result.status === 'failed';
+      // 돈을 잃는 건 사기에 당했을 때만. 진짜 메시지를 놓친 실패는 잔고를 건드리지 않는다
+      lastMainFailed = result.status === 'failed' && scenario.is_scam !== false;
     }
   }
 
@@ -76,8 +80,16 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null }) 
     grade = rules.grades.find(g => score >= g.min) || rules.grades[rules.grades.length - 1];
   }
 
+  // 판단력: 사기는 첫 도전에 막았는지, 진짜는 첫 도전에 제대로 처리했는지
+  const judged = kind => stages.filter(s => s.is_scam === kind);
+  const judgment = {
+    scam_total: judged(true).length, scam_first_try: judged(true).filter(s => s.first_try).length,
+    legit_total: judged(false).length, legit_first_try: judged(false).filter(s => s.first_try).length
+  };
+
   return {
     scoring_version: rules.version,
+    judgment,
     report_ready: reportReady,
     progress: { cleared: clearedCount, total: stages.length },
     balance: lastMainFailed ? 0 : rules.start_balance,
