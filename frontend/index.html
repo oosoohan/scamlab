@@ -1521,12 +1521,45 @@ function finalGameOver(reason) {
     ${lessonBox(s.stage_id)}
     <p class="callout">현실에는 '다시 하기'가 없습니다. 실제로 돈을 보냈다면 바로 <b>112</b>에 지급정지를 요청하고 <b>1332</b> 금융감독원에 상담하세요.</p>
     <button class="btn" id="endReportBtn">결과 보기</button>
-    <button class="btn ghost" id="homeBtn">처음부터 새로 하기</button>`);
+    <button class="btn ghost" id="homeBtn">${won(START_BALANCE)}으로 새로 시작</button>`);
   const cv = $('overlayRoot').querySelector('canvas.siren');
   if (cv) { overSiren = SirenWave.create(cv, { amplitude:.8 }); overSiren.start(); }
   if (lostAll > 0) animateNum(0, lostAll, $('lostNum'));
   $('endReportBtn').onclick = showPostCheck;
-  $('homeBtn').onclick = showTitle;
+  $('homeBtn').onclick = restartFresh;
+}
+
+// 게임이 끝난 뒤: 첫 화면으로 돌아가지 않고, 같은 자가진단 점수로 새 훈련을 바로 시작한다 (잔고는 처음 금액으로)
+async function restartFresh() {
+  const pre = S.pre ?? 3;
+  ScamApi.forgetSession();
+  resetGame();
+  overlay('dark', `<div class="eyebrow">새 훈련</div><h2>새 통장으로 다시 시작합니다</h2><p>메시지 순서도 새로 섞입니다.</p>`);
+  try {
+    const ses = await ScamApi.startSession(pre);
+    applyRules(ses.rules);
+    Object.assign(S, { pre, sessionId:ses.session_id, balance:START_BALANCE, rulesSeen:true });
+    setupInbox();
+    updateHud();
+    S.arrivedShown = 0;
+    showStageIntro(frontier());
+    focusPhone();
+  } catch (e) {
+    overlay('dark', `<div class="eyebrow">새 훈련</div><h2>서버에 연결하지 못했습니다</h2><button class="btn" id="restartRetry">다시 시도</button>`);
+    $('restartRetry').onclick = restartFresh;
+  }
+}
+// 끝난 게임에서 메시지를 열려고 하면 (예: 예전 화면에서 '다시 도전'을 누른 경우)
+function gameEnded() {
+  S.gameOver = true;
+  overlay('over', `
+    <div class="eyebrow">게임 오버</div>
+    <h1>이번 훈련은 끝났습니다</h1>
+    <p>현실에는 '다시 하기'가 없습니다. 결과를 확인하거나 새 통장으로 다시 시작하세요.</p>
+    <button class="btn" id="endReportBtn">결과 보기</button>
+    <button class="btn ghost" id="homeBtn">${won(START_BALANCE)}으로 새로 시작</button>`);
+  $('endReportBtn').onclick = showPostCheck;
+  $('homeBtn').onclick = restartFresh;
 }
 // 사기에 당한 뒤 다시 도전하거나 다른 메시지로 넘어가면 훈련용 잔고를 되돌린다 (규칙 v1)
 function restoreBalance() {
@@ -1662,8 +1695,8 @@ async function showReport(R) {
     <div class="box"><span class="ttl">오답 노트 (${R.mistakes.length})</span>${notes}</div>
     <div class="box"><span class="ttl">실제로 의심될 때</span><b>112</b> 경찰 · <b>1332</b> 금융감독원 · <b>118</b> 불법스팸 신고<br>
       <span style="opacity:.7;font-size:12px">지급정지는 빠를수록 좋습니다. 송금했다면 바로 내 은행과 112에 연락하세요.</span></div>
-    <button class="btn" id="againBtn">처음부터 다시</button>`);
-  $('againBtn').onclick = showTitle;
+    <button class="btn" id="againBtn">${won(START_BALANCE)}으로 새로 시작</button>`);
+  $('againBtn').onclick = restartFresh;
 }
 
 const SCN_DATA = {
@@ -1755,7 +1788,7 @@ function renderScenarioGrid() {
     const done = st === 'done', small = done;
     const when = st === 'now' ? '지금' : st === 'replay' ? '다시 하는 중'
       : done ? `<span class="t ${isScam(s) ? 'scam' : 'legit'}">${isScam(s) ? '🛡 사기 차단' : '✓ 정상 처리'}</span>`
-      : st === 'failed' ? (isScam(s) ? '당함 · 다시' : '놓침 · 다시')
+      : st === 'failed' ? (S.gameOver ? (isScam(s) ? '당함' : '놓침') : (isScam(s) ? '당함 · 다시' : '놓침 · 다시'))
       : `<i aria-hidden="true"></i>${k === 0 ? '방금' : `${k * 3}분 전`}`;
     const sub = s.revealed ? ` · ${t.title}` : '';
     const msg = s.turns[0].scammer_msg.replace(/\[Web발신\]\s*/g, '').replace(/\s+/g, ' ');
@@ -1787,7 +1820,7 @@ const canSwitch = () => { const ov = $('overlayRoot'); if (S.pre == null) return
   if (ov.innerHTML) return !!ov.querySelector('.stage-intro, .overlay.clear, .overlay.over');
   return !S.busy; };
 function openScenario(idx) {
-  if (S.gameOver) { if (!$('overlayRoot').innerHTML) showPostCheck(); return previewScenario(idx, '게임이 끝났습니다. 결과를 보거나 처음부터 새로 시작하세요.'); }
+  if (S.gameOver) { if (!$('overlayRoot').innerHTML) gameEnded(); return previewScenario(idx, '게임이 끝났습니다. 결과를 보거나 새로 시작하세요.'); }
   const st = stageState(idx);
   if (st !== 'replay' && canSwitch()) {
     // 게임 오버 화면에서 다른 사건으로 넘어가면 '다시 도전'과 똑같이 잔고를 되돌린다
@@ -1836,6 +1869,7 @@ async function startStage(idx, replay = false) {
     S.attemptId = (await ScamApi.startAttempt(S.sessionId, s.stage_id)).attempt_id;
   } catch (e) {
     S.busy = false;
+    if (e.code === 'GAME_OVER') { clearOptions(''); return gameEnded(); }
     $('options').innerHTML = `<div class="opt-head"><span>서버에 연결하지 못했습니다.</span></div><button class="opt" id="stageRetry">다시 시도</button>`;
     $('stageRetry').onclick = () => startStage(idx, replay);
     return;
@@ -1934,6 +1968,9 @@ async function restoreSession() {
 }
 
 function resetGame() {
+  // 지난 판에서 공개된 정체(사기/진짜)를 지운다. 새 판에서는 다시 숨겨져야 한다
+  SCENARIOS.forEach(s => { delete s.revealed; delete s.is_scam; delete s.title; delete s.scam_type; });
+  LESSONS = {};
   S = freshState(); updateHud(); clearOptions('');
   $('messages').innerHTML = ''; closeOverlay();
 }
