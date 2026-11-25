@@ -1,0 +1,44 @@
+{
+  "version": "v2",
+  "description": "목숨 3개: 치명타는 목숨 1개와 돈 일부를 잃고 대화가 이어진다. 출처 불명 링크를 열어도 돈을 잃는다. 돈은 게임 전체에서 누적으로 줄어든다.",
+  "start_trust": 100,
+  "start_balance": 3200000,
+  "trap_penalty": 25,
+  "wrong_is_fatal": false,
+  "lives": 3,
+  "wrong_trust_penalty": 25,
+  "wrong_loss": 400000,
+  "link_loss": 200000,
+  "retry_penalty": 5,
+  "hint_penalty": 1,
+  "grades": [
+    {
+      "min": 95,
+      "grade": "S",
+      "title": "사기꾼 감별사",
+      "message": "사기꾼이 먼저 도망가는 수준입니다."
+    },
+    {
+      "min": 75,
+      "grade": "A",
+      "title": "철벽 방어자",
+      "message": "빈틈이 조금 있었지만 끝까지 지켜냈습니다."
+    },
+    {
+      "min": 50,
+      "grade": "B",
+      "title": "아슬아슬 생존자",
+      "message": "몇 번 위험했습니다. 오답 노트를 꼭 확인하세요."
+    },
+    {
+      "min": 0,
+      "grade": "C",
+      "title": "구사일생",
+      "message": "현실이었다면 위험했을 수 있습니다. 취약 유형부터 다시 해보세요."
+    }
+  ],
+  "messages": {
+    "trust_depleted": "신뢰도 방어막이 완전히 무너졌습니다. 계속 끌려다니다가 결국 사기꾼의 요구를 들어주고 말았습니다.",
+    "lives_depleted": "목숨 3개를 모두 잃었습니다. 사기꾼의 요구를 세 번이나 들어주고 말았습니다."
+  }
+}

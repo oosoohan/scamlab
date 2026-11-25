@@ -49,8 +49,15 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
   });
   /** 화면 위 HUD·오른쪽 메뉴에 필요한 만큼만 */
   // 사기인지 진짜인지는 그 사건 대화를 끝까지 한 번이라도 마친 뒤에만 알려 준다
+  /** 화면에 필요한 규칙 값만 (v1이면 lives는 null = 치명타 즉시 실패) */
+  const publicRules = rules => ({
+    start_trust: rules.start_trust, start_balance: rules.start_balance, trap_penalty: rules.trap_penalty,
+    lives: rules.wrong_is_fatal ? null : rules.lives, wrong_loss: rules.wrong_loss || 0, link_loss: rules.link_loss || 0
+  });
+
   const summaryOf = ev => ({
     balance: ev.balance,
+    lost: ev.lost,
     progress: ev.progress,
     found_flags: ev.found_flags,
     flag_total: ev.flag_total,
@@ -68,7 +75,7 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     const r = foldAttempt(scenario, await store.answersOfAttempt(attempt.id), loadRules(session.scoring_version));
     return {
       attempt_id: attempt.id, scenario_id: attempt.scenario_id, attempt_no: attempt.attempt_no,
-      is_replay: !!attempt.is_replay, status: attempt.status, trust: r.trust,
+      is_replay: !!attempt.is_replay, status: attempt.status, trust: r.trust, lives: r.lives,
       next_turn_id: attempt.status === 'playing' ? scenario.turns[r.nextTurnIndex]?.id ?? null : null
     };
   };
@@ -97,7 +104,7 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     res.status(201).json({
       session_id: id,
       scoring_version: rules.version,
-      rules: { start_trust: rules.start_trust, start_balance: rules.start_balance, trap_penalty: rules.trap_penalty }
+      rules: publicRules(rules)
     });
   }));
 
@@ -110,6 +117,7 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
       pre_confidence: session.pre_confidence,
       post_confidence: session.post_confidence,
       finished: !!session.finished_at,
+      rules: publicRules(loadRules(session.scoring_version)),
       summary: summaryOf(ev),
       playing_attempt: playing ? await attemptView(playing, session) : null
     });
@@ -157,6 +165,9 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
       feedback: option.feedback,
       trust: after.trust,
       trust_delta: after.trust - before.trust,
+      lives: after.lives,
+      // 이 답으로 잃은 돈 (규칙 v2의 치명타, 본 도전일 때만)
+      loss: option.type === 'wrong' && !rules.wrong_is_fatal && !attempt.is_replay ? rules.wrong_loss : 0,
       revealed_flags: turn.flags,
       status: after.status === 'playing' ? 'continue' : after.status,
       next_turn_id: after.status === 'playing' ? scenario.turns[after.nextTurnIndex].id : null,
@@ -167,9 +178,10 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     const attempts = await store.sessionAttempts(session.id);
     if (after.status === 'failed') {
       // 진짜 메시지에서 실패한 경우(과잉 의심 등)는 '사기꾼에게 끌려갔다'는 문구를 붙이지 않는다
-      body.game_over_reason = after.failCause === 'trust_depleted' && scenario.is_scam
-        ? `${rules.messages.trust_depleted}\n\n${scenario.game_over_reason}`
-        : scenario.game_over_reason;
+      const lead = !scenario.is_scam ? null
+        : after.failCause === 'trust_depleted' ? rules.messages.trust_depleted
+        : after.failCause === 'lives_depleted' ? rules.messages.lives_depleted : null;
+      body.game_over_reason = lead ? `${lead}\n\n${scenario.game_over_reason}` : scenario.game_over_reason;
     }
     if (after.status !== 'playing') body.reveal = revealOf(scenario);
     if (after.status === 'cleared') {
@@ -239,6 +251,20 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     body.matched_option_id = option.id;
     body.model_answer = verdict.type === 'correct' ? null : ctx.turn.options.find(o => o.type === 'correct').text;
     res.json(body);
+  }));
+
+  /* ---------- 대화 속 링크 열기 (규칙 v2: 본 도전에서 연 링크마다 돈을 잃는다) ---------- */
+  router.post('/attempts/:id/link-clicks', h(async (req, res) => {
+    const { attempt, session } = await ownAttempt(req, req.params.id);
+    const url = String((req.body || {}).url || '').trim().slice(0, 300);
+    const scenario = content.scenarioById.get(attempt.scenario_id);
+    // 이 사건 메시지에 실제로 있는 링크만 받는다
+    if (!url || !scenario.turns.some(t => t.scammer_msg.includes(url))) throw bad('INVALID_URL', '이 대화에 없는 링크입니다.');
+    const rules = loadRules(session.scoring_version);
+    let charged = false;
+    if (attempt.status === 'playing' && !attempt.is_replay && rules.link_loss) charged = await store.recordLinkClick(attempt.id, url);
+    const attempts = await store.sessionAttempts(session.id);
+    res.json({ charged, loss: charged ? rules.link_loss : 0, summary: summaryOf(await evaluate(session, attempts)) });
   }));
 
   /* ---------- 마무리·리포트 ---------- */

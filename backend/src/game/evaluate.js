@@ -25,6 +25,8 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null }) 
   const mistakes = [];
   const stageMap = new Map(content.scenarios.map(s => [s.id, { scenario_id: s.id, is_scam: s.is_scam !== false, cleared: false, failed: false, first_try: null, best_trust: null, misses: 0, attempts: 0 }]));
   let lastMainFailed = false;
+  // 규칙 v2: 본 도전의 치명타·링크 열기로 잃은 돈이 게임 전체에서 누적된다 (다시 해 보기는 돈을 잃지 않음)
+  let lost = 0, linkClicks = 0;
 
   for (const at of attempts) {
     const scenario = content.scenarioById.get(at.scenario_id);
@@ -59,6 +61,9 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null }) 
       stage.best_trust = Math.max(stage.best_trust ?? 0, result.trust);
     }
     if (main) {
+      lost += result.wrongs * (rules.wrong_loss || 0);
+      linkClicks += (at.clicks || []).length;
+      lost += (at.clicks || []).length * (rules.link_loss || 0);
       if (result.status === 'failed') stats.retries++;
       // 돈을 잃는 건 사기에 당했을 때만. 진짜 메시지를 놓친 실패는 잔고를 건드리지 않는다
       lastMainFailed = result.status === 'failed' && scenario.is_scam !== false;
@@ -92,7 +97,9 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null }) 
     judgment,
     report_ready: reportReady,
     progress: { cleared: clearedCount, total: stages.length },
-    balance: lastMainFailed ? 0 : rules.start_balance,
+    balance: rules.wrong_is_fatal ? (lastMainFailed ? 0 : rules.start_balance) : Math.max(0, rules.start_balance - lost),
+    lost: rules.wrong_is_fatal ? null : Math.min(lost, rules.start_balance),
+    link_clicks: linkClicks,
     stages,
     found_flags: content.flags.filter(f => found.has(f.id)).map(f => f.id),
     flag_total: content.flags.length,

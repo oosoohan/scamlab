@@ -101,3 +101,11 @@ CREATE TABLE IF NOT EXISTS answers (
   UNIQUE (attempt_id, turn_id)
 );
 CREATE INDEX IF NOT EXISTS idx_answers_turn ON answers(turn_id);
+
+-- 대화 속 출처 불명 링크를 연 기록 (규칙 v2: 본 도전에서 연 링크마다 돈을 잃는다). 같은 도전에서 같은 링크는 한 번만
+CREATE TABLE IF NOT EXISTS link_clicks (
+  attempt_id   INTEGER NOT NULL REFERENCES stage_attempts(id) ON DELETE CASCADE,
+  url          TEXT    NOT NULL,
+  clicked_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  PRIMARY KEY (attempt_id, url)
+);
