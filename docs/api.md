@@ -126,7 +126,7 @@
 | `cleared` | 사건 방어 성공 | `stage_result: { trust, previous_best, improved }` |
 | `failed` | 게임 오버 | `fail_cause`: `fatal`(치명적 실수) / `trust_depleted`(신뢰도 0), `game_over_reason` |
 
-**규칙 v2 (기본)**: 치명타(`wrong`)와 대화 속 링크 열기는 '털림'이다. 털림 세 번(`strikes_to_zero`)이면 잔고가 0원이 된다. 1번째는 시작 잔고의 25~45%, 2번째는 남은 돈의 40~65%(만 원 단위, 세션 id로 고정되는 무작위), 3번째는 남은 돈 전부. 치명타는 신뢰도도 25 깎고 대화는 이어지며, 신뢰도가 0이면 `fail_cause: "trust_depleted"`로 실패. 응답의 `loss`(이번에 털린 돈), `summary.balance`, `summary.lost`, `summary.strikes`를 쓴다. 잃은 돈은 다시 도전해도 돌아오지 않고, 다시 해 보기(replay)는 털림으로 세지 않는다.
+**규칙 v2 (기본)**: 치명타(`wrong`)와 대화 속 링크 열기는 '털림'이다. 털림 세 번(`strikes_to_zero`)이면 잔고가 0원이 된다. 1번째는 시작 잔고의 25~45%, 2번째는 남은 돈의 40~65%(만 원 단위, 세션 id로 고정되는 무작위), 3번째는 남은 돈 전부. 치명타는 신뢰도도 25 깎고 대화는 이어지며, 신뢰도가 0이면 `fail_cause: "trust_depleted"`로 실패. 응답의 `loss`(이번에 털린 돈), `summary.balance`, `summary.lost`, `summary.strikes`를 쓴다. 잃은 돈은 다시 도전해도 돌아오지 않고, 다시 해 보기(replay)는 털림으로 세지 않는다. **잔고가 0원이 되거나 한 메시지에서 신뢰도가 0이 되면 그 자리에서 게임 전체가 끝난다**(`fail_cause: "bankrupt"` 또는 `"trust_depleted"`, 응답·요약의 `game_over: true`). 이후 새 도전은 `409 GAME_OVER`, 리포트는 바로 열린다(못 끝낸 메시지는 0점).
 
 ### `POST /attempts/:id/link-clicks`  ← 대화 속 링크 열기
 요청 `{ "url": "http://cy-1ogis.example/a8Kx" }` → `{ "charged": true, "loss": 1180000, "summary": { ... } }`

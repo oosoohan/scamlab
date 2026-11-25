@@ -35,7 +35,7 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null, se
   let lastMainFailed = false;
   // 규칙 v2: 본 도전의 치명타·링크 열기 = '털림'. 일어난 순서대로 세 번이면 잔고 0 (다시 해 보기는 돈을 잃지 않음)
   const lossEvents = [];
-  let linkClicks = 0;
+  let linkClicks = 0, anyMainFailed = false;
 
   for (const at of attempts) {
     const scenario = content.scenarioById.get(at.scenario_id);
@@ -43,7 +43,10 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null, se
     if (!scenario || !stage) continue; // 숨겨진(비활성) 사건
     const main = !at.is_replay;
     const result = foldAttempt(scenario, at.answers, rules);
+    // 답안으로는 진행 중이지만 서버가 끝낸 도전 = 잔고 0원으로 그 자리에서 실패 (규칙 v2)
+    if (at.status === 'failed' && result.status === 'playing') { result.status = 'failed'; result.failCause = 'bankrupt'; }
     stage.attempts++;
+    if (main && result.status === 'failed') anyMainFailed = true;
 
     for (const a of at.answers) {
       const turn = content.turnById.get(a.turn_id);
@@ -100,14 +103,16 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null, se
 
   const stages = [...stageMap.values()];
   const clearedCount = stages.filter(s => s.cleared).length;
-  const reportReady = clearedCount === stages.length && stages.length > 0;
+  // 규칙 v2: 한 번이라도 실패하거나 잔고가 0원이면 게임 전체가 끝난다 → 바로 리포트
+  const gameOver = !!rules.game_over_ends_session && (anyMainFailed || balanceV2 <= 0);
+  const reportReady = (clearedCount === stages.length && stages.length > 0) || gameOver;
 
   const maxMiss = Math.max(0, ...stages.map(s => s.misses));
   const weak = maxMiss > 0 ? stages.filter(s => s.misses === maxMiss).map(s => s.scenario_id) : [];
 
   let score = null, grade = null, avgTrust = null;
   if (reportReady) {
-    avgTrust = Math.round(stages.reduce((sum, s) => sum + s.best_trust, 0) / stages.length);
+    avgTrust = Math.round(stages.reduce((sum, s) => sum + (s.best_trust ?? 0), 0) / stages.length);   // 못 끝낸 메시지는 0점
     const penalty = stats.retries * rules.retry_penalty + stats.hints * rules.hint_penalty;
     score = Math.max(0, avgTrust - penalty);
     grade = rules.grades.find(g => score >= g.min) || rules.grades[rules.grades.length - 1];
@@ -124,6 +129,7 @@ function evaluateSession({ content, attempts, rules, pre = null, post = null, se
     scoring_version: rules.version,
     judgment,
     report_ready: reportReady,
+    game_over: gameOver,
     progress: { cleared: clearedCount, total: stages.length },
     balance: rules.wrong_is_fatal ? (lastMainFailed ? 0 : rules.start_balance) : balanceV2,
     lost: rules.wrong_is_fatal ? null : rules.start_balance - balanceV2,
