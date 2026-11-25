@@ -33,7 +33,8 @@ scamlab/
 ├── content/               ← 문제 원본 (시나리오·위험 신호·교훈 JSON)
 └── docs/
     ├── api.md                   API 명세 ← 프론트·백엔드 합의 문서
-    └── frontend-integration.md  index.html에서 고칠 6곳
+    ├── frontend-integration.md  프론트 연결 내용과 수정 규칙
+    └── deploy.md                배포 안내 (Vercel + Turso)
 ```
 
 ## 실행
