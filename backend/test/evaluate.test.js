@@ -95,14 +95,14 @@ test('evaluateSession: 마지막 본 도전이 실패면 잔고 0', () => {
   assert.equal(ev.balance, 0);
 });
 
-test('규칙 v2: 치명타는 목숨·돈을 깎고 이어지며, 링크를 연 만큼 돈이 줄고, 다시 해 보기는 돈을 잃지 않는다', () => {
+test('규칙 v2: 치명타는 돈·신뢰도를 깎고 이어지며, 링크를 연 만큼 돈이 줄고, 다시 해 보기는 돈을 잃지 않는다', () => {
   const v2 = loadRules('v2');
   let r = foldAttempt(S(1), answersFor(1, { 2: 'wrong' }).concat([]), v2);
   // answersFor는 wrong에서 끊으므로 v2용으로 직접 만든다
   const turns = S(1).turns;
   const ans = turns.map((t, i) => ({ turn_id: t.id, option_id: pick(t.id, i === 1 ? 'wrong' : 'correct') }));
   r = foldAttempt(S(1), ans, v2);
-  assert.deepEqual([r.status, r.lives, r.wrongs, r.trust], ['cleared', 2, 1, 75]);
+  assert.deepEqual([r.status, r.wrongs, r.trust], ['cleared', 1, 75]);
 
   let id = 0;
   const at = (scenario_id, answers, is_replay = 0, clicks = []) => ({ id: ++id, scenario_id, is_replay, answers, clicks });

@@ -4,13 +4,12 @@
  * @param {{ turns: { id:number, options: { id:string, type:'correct'|'trap'|'wrong' }[] }[] }} scenario
  * @param {{ turn_id:number, option_id:string }[]} answers  턴 순서대로
  * @param {object} rules  rules/<version>.json
- * v1: 치명타(wrong)는 즉시 실패. v2: 목숨(lives)을 하나 잃고 대화가 이어지며, 목숨이 0이 되면 실패.
- * @returns {{ trust:number, lives:number|null, wrongs:number, status:'playing'|'cleared'|'failed',
- *            failCause:null|'fatal'|'trust_depleted'|'lives_depleted', nextTurnIndex:number }}
+ * v1: 치명타(wrong)는 즉시 실패. v2: 신뢰도를 잃고(돈은 evaluate가 계산) 대화가 이어지며, 신뢰도가 0이 되면 실패.
+ * @returns {{ trust:number, wrongs:number, status:'playing'|'cleared'|'failed',
+ *            failCause:null|'fatal'|'trust_depleted', nextTurnIndex:number }}
  */
 function foldAttempt(scenario, answers, rules) {
   let trust = rules.start_trust;
-  let lives = rules.wrong_is_fatal ? null : rules.lives;
   let wrongs = 0;
   let status = 'playing';
   let failCause = null;
@@ -28,15 +27,13 @@ function foldAttempt(scenario, answers, rules) {
     } else if (opt.type === 'wrong') {
       if (rules.wrong_is_fatal) { status = 'failed'; failCause = 'fatal'; break; }
       wrongs++;
-      lives--;
       trust = Math.max(0, trust - (rules.wrong_trust_penalty || 0));
-      if (lives <= 0) { status = 'failed'; failCause = 'lives_depleted'; break; }
       if (trust <= 0) { status = 'failed'; failCause = 'trust_depleted'; break; }
     }
   }
 
   if (status === 'playing' && answers.length === scenario.turns.length) status = 'cleared';
-  return { trust, lives, wrongs, status, failCause, nextTurnIndex: answers.length };
+  return { trust, wrongs, status, failCause, nextTurnIndex: answers.length };
 }
 
 module.exports = { foldAttempt };

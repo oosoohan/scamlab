@@ -259,10 +259,6 @@
   .statusbar { height:44px; padding:14px 28px 0; display:flex; justify-content:space-between; font-size:14px; font-weight:600; background:var(--header); color:var(--header-text); flex-shrink:0; }
   .hud { display:flex; gap:8px; padding:8px 12px; background:#14161c; color:#fff; font-size:13px; flex-shrink:0; align-items:center; }
   .hud .stage-tag { background:#d61f2c; padding:3px 8px; border-radius:6px; font-weight:800; white-space:nowrap; }
-  .hud .lives { font-size:14px; letter-spacing:1px; white-space:nowrap; color:#ff4d5e; }
-  .hud .lives i { font-style:normal; color:#4a4f5c; }
-  .hud .lives.hit { animation:livesHit .6s ease-out; }
-  @keyframes livesHit { 0%,100% { transform:none; } 25% { transform:scale(1.35); } 50% { transform:scale(.9); } }
   .gauge { flex:1; }
   .gauge-label { display:flex; justify-content:space-between; opacity:.8; margin-bottom:3px; }
   .gauge-bar { height:6px; background:#2b2f3a; border-radius:3px; overflow:hidden; }
@@ -587,7 +583,6 @@
     <div class="statusbar"><span id="clock">19:30</span><span>●●● 5G ▮</span></div>
     <div class="hud">
       <span class="stage-tag" id="stageTag">1단계</span>
-      <span class="lives" id="lives" role="img" aria-label="목숨" hidden></span>
       <div class="gauge">
         <div class="gauge-label"><span>신뢰도 방어막</span><span id="trustNum">100</span></div>
         <div class="gauge-bar" role="progressbar" aria-label="신뢰도" aria-valuemin="0" aria-valuemax="100" id="trustBar"><div class="gauge-fill" id="trustFill" style="width:100%"></div></div>
@@ -1115,9 +1110,9 @@ const THEMES = {
 // 기본값. 세션을 만들면 서버 규칙(rules/v1.json) 값으로 바뀐다
 let START_BALANCE = 3200000;
 let TRAP_PENALTY = 25;
-// 규칙 v2: 메시지마다 목숨 LIVES개. 치명타는 목숨 1개 + WRONG_LOSS원, 링크 열기는 LINK_LOSS원. v1이면 LIVES = null(치명타 즉시 실패)
-let LIVES = null, WRONG_LOSS = 0, LINK_LOSS = 0;
-function applyRules(r) { if (!r) return; START_BALANCE = r.start_balance; TRAP_PENALTY = r.trap_penalty; LIVES = r.lives ?? null; WRONG_LOSS = r.wrong_loss || 0; LINK_LOSS = r.link_loss || 0; }
+// 규칙 v2(MONEY): 치명타는 WRONG_LOSS원, 링크 열기는 LINK_LOSS원을 잃고 대화가 이어진다. v1이면 치명타 즉시 실패
+let MONEY = false, WRONG_LOSS = 0, LINK_LOSS = 0;
+function applyRules(r) { if (!r) return; START_BALANCE = r.start_balance; TRAP_PENALTY = r.trap_penalty; MONEY = !!r.money_mode; WRONG_LOSS = r.wrong_loss || 0; LINK_LOSS = r.link_loss || 0; }
 
 /* ---------- 상태 ---------- */
 // sessionId·attemptId: 서버 기록 id. 점수·오답 노트는 서버가 계산하고, 여기 stats·stageMiss는 화면 표시용이다
@@ -1214,9 +1209,6 @@ function applyTheme(platform) {
 function updateHud() {
   $('stageTag').textContent = `메시지 ${posOf(S.stageIdx)}`;
   $('trustNum').textContent = S.trust;
-  const lv = $('lives');
-  if (LIVES != null) { lv.hidden = false; lv.innerHTML = '♥'.repeat(Math.max(0, S.lives)) + `<i>${'♥'.repeat(Math.max(0, LIVES - S.lives))}</i>`; lv.setAttribute('aria-label', `목숨 ${S.lives}개 남음`); }
-  else lv.hidden = true;
   $('trustBar').setAttribute('aria-valuenow', S.trust);
   const f = $('trustFill');
   f.style.width = S.trust + '%';
@@ -1418,8 +1410,7 @@ async function handleResult(r) {
   if (r.reveal) applyReveal(stage().stage_id, r.reveal);
   S.stats[r.type]++;
   S.trust = r.trust;
-  if (r.lives != null) S.lives = r.lives;
-  if (LIVES != null && r.summary) S.balance = r.summary.balance;   // v2: 돈은 서버가 누적으로 계산
+  if (MONEY && r.summary) S.balance = r.summary.balance;   // v2: 돈은 서버가 누적으로 계산
   if (r.loss) { S.attemptLoss += r.loss; addLedger('out', `${stage().scammer_profile.name} · 송금`, -r.loss, '치명적 실수'); }
   if (r.type === 'correct') {
     addSys('correct', '✅ 방어 성공', esc(r.feedback));
@@ -1434,8 +1425,7 @@ async function handleResult(r) {
   } else {
     S.stageMiss[stage().stage_id]++;
     updateHud(); shakePhone(true); flashSiren();
-    if (LIVES != null) { const lv = $('lives'); lv.classList.remove('hit'); void lv.offsetWidth; lv.classList.add('hit'); }
-    addSys('wrong', LIVES != null ? `❌ 치명적 실수 · 목숨 -1${r.loss ? ` · −${won(r.loss).replace('₩', '')}원` : ''}` : '❌ 치명적 실수', esc(r.feedback) + modelAnswer(r));
+    addSys('wrong', MONEY && r.loss ? `❌ 치명적 실수 · −${won(r.loss).replace('₩', '')}원 · 신뢰도 ${r.trust_delta}` : '❌ 치명적 실수', esc(r.feedback) + modelAnswer(r));
     await sleep(450); revealFlags(S.hintUsed);
     await sleep(1500);
   }
@@ -1483,7 +1473,7 @@ function gameOver(reason) {
   const s = stage(), scam = isScam(s) !== false;
   if (!S.replay) S.failed[s.stage_id] = true;
   if (!scam) return missedLegit(reason);
-  const v2 = LIVES != null;
+  const v2 = MONEY;
   const lost = v2 ? S.attemptLoss : S.balance;
   if (!S.replay && !v2) { S.balance = 0; if (lost > 0) addLedger('out', `${themeOf(s).title} · 인터넷뱅킹 출금`, -lost, '사기 계좌로 이체'); }
   updateHud();
@@ -1509,7 +1499,7 @@ function gameOver(reason) {
 }
 // 사기에 당한 뒤 다시 도전하거나 다른 메시지로 넘어가면 훈련용 잔고를 되돌린다
 function restoreBalance() {
-  if (LIVES != null) return;   // v2: 잃은 돈은 돌아오지 않는다 (누적)
+  if (MONEY) return;   // v2: 잃은 돈은 돌아오지 않는다 (누적)
   if (S.balance < START_BALANCE) { addLedger('in', '훈련용 잔고 복구', START_BALANCE - S.balance, '다시 도전'); S.balance = START_BALANCE; updateHud(); }
 }
 // 진짜 메시지를 과잉 의심하거나 무방비로 대해 신뢰도가 바닥난 경우: 돈은 잃지 않지만 놓친 것을 보여 준다
@@ -1800,7 +1790,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('artModa
 async function startStage(idx, replay = false) {
   if (replay && !S.replay) beginReplay();
   closeOverlay();
-  Object.assign(S, { stageIdx:idx, turnIdx:0, trust:100, lives:LIVES ?? 0, attemptLoss:0, busy:true, lastBubble:null, attemptId:null });
+  Object.assign(S, { stageIdx:idx, turnIdx:0, trust:100, attemptLoss:0, busy:true, lastBubble:null, attemptId:null });
   const s = stage();
   applyTheme(s.platform);
   $('avatar').textContent = theme().icon;
@@ -2062,7 +2052,7 @@ function openFakePage(url) {
       : `🔗 링크를 닫았습니다. 다음부턴 누르기 전에 주소를 보세요: <b>${esc(host)}</b> 는 공식 주소가 아닙니다.`);
   };
   // 규칙 v2: 출처 불명 링크는 '여는 순간' 돈이 빠진다 (진행 중인 본 도전만, 같은 링크는 한 번만)
-  if (LIVES != null && S.attemptId && !S.replay) {
+  if (MONEY && S.attemptId && !S.replay) {
     ScamApi.linkClick(S.attemptId, url).then(r => {
       S.balance = r.summary.balance;
       if (r.charged) {

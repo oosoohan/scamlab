@@ -49,10 +49,10 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
   });
   /** 화면 위 HUD·오른쪽 메뉴에 필요한 만큼만 */
   // 사기인지 진짜인지는 그 사건 대화를 끝까지 한 번이라도 마친 뒤에만 알려 준다
-  /** 화면에 필요한 규칙 값만 (v1이면 lives는 null = 치명타 즉시 실패) */
+  /** 화면에 필요한 규칙 값만 (money_mode: 치명타·링크가 돈을 깎고 대화가 이어지는 v2 규칙인지) */
   const publicRules = rules => ({
     start_trust: rules.start_trust, start_balance: rules.start_balance, trap_penalty: rules.trap_penalty,
-    lives: rules.wrong_is_fatal ? null : rules.lives, wrong_loss: rules.wrong_loss || 0, link_loss: rules.link_loss || 0
+    money_mode: !rules.wrong_is_fatal, wrong_loss: rules.wrong_loss || 0, link_loss: rules.link_loss || 0
   });
 
   const summaryOf = ev => ({
@@ -75,7 +75,7 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     const r = foldAttempt(scenario, await store.answersOfAttempt(attempt.id), loadRules(session.scoring_version));
     return {
       attempt_id: attempt.id, scenario_id: attempt.scenario_id, attempt_no: attempt.attempt_no,
-      is_replay: !!attempt.is_replay, status: attempt.status, trust: r.trust, lives: r.lives,
+      is_replay: !!attempt.is_replay, status: attempt.status, trust: r.trust,
       next_turn_id: attempt.status === 'playing' ? scenario.turns[r.nextTurnIndex]?.id ?? null : null
     };
   };
@@ -165,7 +165,6 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
       feedback: option.feedback,
       trust: after.trust,
       trust_delta: after.trust - before.trust,
-      lives: after.lives,
       // 이 답으로 잃은 돈 (규칙 v2의 치명타, 본 도전일 때만)
       loss: option.type === 'wrong' && !rules.wrong_is_fatal && !attempt.is_replay ? rules.wrong_loss : 0,
       revealed_flags: turn.flags,
@@ -179,8 +178,7 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     if (after.status === 'failed') {
       // 진짜 메시지에서 실패한 경우(과잉 의심 등)는 '사기꾼에게 끌려갔다'는 문구를 붙이지 않는다
       const lead = !scenario.is_scam ? null
-        : after.failCause === 'trust_depleted' ? rules.messages.trust_depleted
-        : after.failCause === 'lives_depleted' ? rules.messages.lives_depleted : null;
+        : after.failCause === 'trust_depleted' ? rules.messages.trust_depleted : null;
       body.game_over_reason = lead ? `${lead}\n\n${scenario.game_over_reason}` : scenario.game_over_reason;
     }
     if (after.status !== 'playing') body.reveal = revealOf(scenario);

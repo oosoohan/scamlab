@@ -48,30 +48,28 @@ test('API 흐름', async t => {
   const answer = (attemptId, turn, type, hint = false) =>
     call('POST', `/attempts/${attemptId}/answers`, { turn_id: turn.id, option_id: pick(turn.id, type), hint_used: hint }, TOKEN);
 
-  await t.test('1단계: 치명적 실수는 목숨 1개와 40만 원, 세 번이면 실패', async () => {
+  await t.test('1단계: 치명적 실수는 40만 원과 신뢰도 -25, 신뢰도가 바닥나면 실패', async () => {
     const a = (await call('POST', `/sessions/${sessionId}/attempts`, { scenario_id: 1 }, TOKEN)).body;
-    assert.equal(a.lives, 3);
     let r = await answer(a.attempt_id, turnsOf(1)[0], 'wrong');
     assert.equal(r.body.type, 'wrong');
     assert.equal(r.body.status, 'continue');
-    assert.equal(r.body.lives, 2);
     assert.equal(r.body.loss, 400000);
     assert.equal(r.body.trust_delta, -25);
     assert.equal(r.body.summary.balance, 2800000);
     assert.equal(r.body.reveal, undefined);   // 아직 대화 중이면 정체를 알려 주지 않는다
     await answer(a.attempt_id, turnsOf(1)[1], 'wrong');
-    r = await answer(a.attempt_id, turnsOf(1)[2], 'wrong');
+    await answer(a.attempt_id, turnsOf(1)[2], 'wrong');
+    r = await answer(a.attempt_id, turnsOf(1)[3], 'wrong');
     assert.equal(r.body.status, 'failed');
-    assert.equal(r.body.fail_cause, 'lives_depleted');
-    assert.equal(r.body.lives, 0);
-    assert.ok(r.body.game_over_reason.startsWith('목숨 3개'));
-    assert.equal(r.body.summary.balance, 2000000);
-    assert.equal(r.body.summary.lost, 1200000);
+    assert.equal(r.body.fail_cause, 'trust_depleted');
+    assert.equal(r.body.trust, 0);
+    assert.equal(r.body.summary.balance, 1600000);
+    assert.equal(r.body.summary.lost, 1600000);
     // 끝나면 정체를 알려 준다
     assert.equal(r.body.reveal.is_scam, true);
     assert.ok(r.body.reveal.lessons.length > 0);
     // 끝난 도전에는 더 답할 수 없다
-    assert.equal((await answer(a.attempt_id, turnsOf(1)[3], 'correct')).status, 409);
+    assert.equal((await answer(a.attempt_id, turnsOf(1)[4], 'correct')).status, 409);
   });
 
   await t.test('1단계 재도전: 빈틈 한 번 → 75점 클리어', async () => {
@@ -84,7 +82,7 @@ test('API 흐름', async t => {
     }
     assert.equal(r.body.status, 'cleared');
     assert.deepEqual(r.body.stage_result, { trust: 75, previous_best: null, improved: true });
-    assert.equal(r.body.summary.balance, 2000000);   // 잃은 돈은 다시 도전해도 돌아오지 않는다
+    assert.equal(r.body.summary.balance, 1600000);   // 잃은 돈은 다시 도전해도 돌아오지 않는다
   });
 
   await t.test('다른 사건으로 넘어가면 진행 중이던 도전은 버려진다', async () => {
@@ -93,9 +91,9 @@ test('API 흐름', async t => {
     // 대화 속 링크를 열면 20만 원. 같은 링크를 다시 열어도 한 번만
     const url = turnsOf(2)[0].scammer_msg.match(/https?:\/\/\S+/)[0];
     let c = await call('POST', `/attempts/${a.attempt_id}/link-clicks`, { url }, TOKEN);
-    assert.deepEqual([c.status, c.body.charged, c.body.loss, c.body.summary.balance], [200, true, 200000, 1800000]);
+    assert.deepEqual([c.status, c.body.charged, c.body.loss, c.body.summary.balance], [200, true, 200000, 1400000]);
     c = await call('POST', `/attempts/${a.attempt_id}/link-clicks`, { url }, TOKEN);
-    assert.deepEqual([c.body.charged, c.body.summary.balance], [false, 1800000]);
+    assert.deepEqual([c.body.charged, c.body.summary.balance], [false, 1400000]);
     c = await call('POST', `/attempts/${a.attempt_id}/link-clicks`, { url: 'https://example.com' }, TOKEN);
     assert.equal(c.body.error.code, 'INVALID_URL');
     const s = (await call('GET', `/sessions/${sessionId}`, null, TOKEN)).body;
@@ -125,7 +123,7 @@ test('API 흐름', async t => {
     assert.deepEqual(r.body.judgment, { scam_total: 9, scam_first_try: 8, legit_total: 5, legit_first_try: 5 });
     assert.equal(r.body.grade.grade, 'A');
     assert.equal(r.body.confidence.delta, 2);
-    assert.equal(r.body.balance, 1800000);
+    assert.equal(r.body.balance, 1400000);
     assert.equal(r.body.link_clicks, 1);
   });
 

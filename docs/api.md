@@ -126,7 +126,7 @@
 | `cleared` | 사건 방어 성공 | `stage_result: { trust, previous_best, improved }` |
 | `failed` | 게임 오버 | `fail_cause`: `fatal`(치명적 실수) / `trust_depleted`(신뢰도 0), `game_over_reason` |
 
-**규칙 v2 (기본)**: 치명타(`wrong`)는 즉시 실패가 아니라 목숨 1개(`lives`, 메시지마다 3개)와 `wrong_loss`(40만 원)를 잃고 대화가 이어진다. 목숨이 0이 되면 `fail_cause: "lives_depleted"`로 실패. 응답의 `lives`, `loss`(이 답으로 잃은 돈), `summary.balance`(게임 전체 누적 잔고), `summary.lost`를 쓴다. 잃은 돈은 다시 도전해도 돌아오지 않고, 다시 해 보기(replay)에서는 돈을 잃지 않는다.
+**규칙 v2 (기본)**: 치명타(`wrong`)는 즉시 실패가 아니라 `wrong_loss`(40만 원)와 신뢰도 25를 잃고 대화가 이어진다. 신뢰도가 0이 되면 `fail_cause: "trust_depleted"`로 실패. 응답의 `loss`(이 답으로 잃은 돈), `summary.balance`(게임 전체 누적 잔고), `summary.lost`를 쓴다. 잃은 돈은 다시 도전해도 돌아오지 않고, 다시 해 보기(replay)에서는 돈을 잃지 않는다.
 
 ### `POST /attempts/:id/link-clicks`  ← 대화 속 링크 열기
 요청 `{ "url": "http://cy-1ogis.example/a8Kx" }` → `{ "charged": true, "loss": 200000, "summary": { ... } }`
