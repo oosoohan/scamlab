@@ -67,6 +67,10 @@
     answer: (attemptId, turnId, optionId, hintUsed) =>
       request('POST', `/attempts/${attemptId}/answers`, { turn_id: turnId, option_id: optionId, hint_used: !!hintUsed }),
 
+    /** 채팅 속 링크로 열린 가짜 페이지에서 정보를 넣으려 함 → { penalized, trust, trust_delta, status, game_over_reason, summary } */
+    bait: (attemptId, turnId, url, note) =>
+      request('POST', `/attempts/${attemptId}/events`, { kind: 'bait', turn_id: turnId, url, note }),
+
     /** 사후 자가진단 → 최종 리포트 */
     finish: (sessionId, postConfidence) => request('POST', `/sessions/${sessionId}/finish`, { post_confidence: postConfidence }),
     report: sessionId => request('GET', `/sessions/${sessionId}/report`)

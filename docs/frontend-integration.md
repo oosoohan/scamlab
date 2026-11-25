@@ -8,6 +8,9 @@
 > - 선택지의 정답 여부는 브라우저에 없다. 판정은 `ScamApi.answer()` 응답(`type`, `trust`, `status`)으로 분기한다
 > - 점수·등급·오답 노트는 서버 리포트(`ScamApi.report()`) 값을 그린다. 화면에서 따로 계산하지 않는다
 > - 이미지·영상은 `frontend/assets/`에 파일로 두고 경로로 쓴다 (base64로 넣지 않는다)
+> - **화면 파일은 `frontend/index.html` 하나다.** 저장소 맨 위에 `index.html`을 따로 만들지 않는다 (배포에 쓰이지 않음)
+> - 신뢰도를 바꾸는 새 기능(예: 가짜 링크 낚임)은 화면에서 직접 깎지 말고 서버 API로 기록한다 → `ScamApi.bait()`
+> - 서버 준비가 필요한 기능은 `FEATURES`(서버 `/api/content`의 `features`)로 켜고 끈다 — 직접 답장은 `FEATURES.ai_chat`
 
 원래 `index_v2.html`은 문제 데이터와 채점을 모두 브라우저 안에서 처리했다. 아래 6곳을 고쳐 서버와 연결했다.
 말풍선·흔들림·사이렌 같은 연출 코드는 손대지 않았다.
