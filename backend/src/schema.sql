@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS scenarios (
   scammer_name     TEXT    NOT NULL,
   scammer_status   TEXT    NOT NULL,
   game_over_reason TEXT    NOT NULL,
-  is_active        INTEGER NOT NULL DEFAULT 1
+  is_active        INTEGER NOT NULL DEFAULT 1,
+  is_scam          INTEGER NOT NULL DEFAULT 1    -- 0이면 진짜(정상) 메시지. 끝나기 전에는 브라우저에 알려 주지 않는다
 );
 
 CREATE TABLE IF NOT EXISTS turns (

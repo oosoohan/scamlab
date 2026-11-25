@@ -97,6 +97,32 @@
   .scn.replay { background:rgba(26,54,110,.82); }
   .scn.replay .t { color:#fff; font-weight:700; }
   .scn.done .msg { color:rgba(255,255,255,.62); }
+  /* 사기·진짜가 섞인 알림함: 새 알림이 하나씩 도착하고, 끝낸 메시지는 아래 '처리함'으로 작게 내려간다 */
+  .scn.arrive { animation:scnIn .5s cubic-bezier(.2,.8,.2,1) both; animation-delay:var(--d,0s); }
+  @keyframes scnIn { from { opacity:0; transform:translateY(-14px) scale(.97); } to { opacity:1; transform:none; } }
+  .scn .t i { display:inline-block; width:9px; height:9px; border-radius:50%; background:#0a84ff; margin-right:5px; vertical-align:1px; }
+  .scn.failed { background:rgba(96,20,30,.78); }
+  .scn.failed .t { color:#ff8a95; font-weight:700; }
+  .scn.small { grid-template-columns:30px minmax(0,1fr) auto; padding:9px 14px 9px 12px; border-radius:18px; }
+  .scn.small .ic { width:30px; height:30px; border-radius:8px; font-size:13px; }
+  .scn.small .msg { display:none; }
+  .scn.small .who { font-size:14px; }
+  .scn .t.scam { color:#7fe3a8; } .scn .t.legit { color:#8cc8ff; } .scn .t.miss { color:#ffb3b9; }
+  .inbox-sub { margin:10px 6px 2px; font-size:13px; font-weight:700; color:rgba(255,255,255,.6); letter-spacing:.2px; }
+  .inbox-wait { padding:6px 8px; font-size:13.5px; color:rgba(255,255,255,.62); }
+  /* 내 통장: 사기에 당하면 출금 내역이 빨갛게 찍힌다 */
+  .ledger { margin-top:10px; border-radius:22px; padding:12px 16px 10px; }
+  .ledger .lg-h { display:flex; justify-content:space-between; align-items:baseline; font-size:14px; color:rgba(255,255,255,.78); }
+  .ledger .lg-h b { font-size:15px; color:#fff; font-variant-numeric:tabular-nums; }
+  .ledger ul { list-style:none; margin:6px 0 0; padding:0; }
+  .ledger li { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; padding:6px 0; border-top:1px solid rgba(255,255,255,.08); font-size:14px; }
+  .ledger li:first-child { border-top:0; }
+  .ledger li span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:rgba(255,255,255,.88); }
+  .ledger li small { display:block; font-size:12px; color:rgba(255,255,255,.55); }
+  .ledger li b { font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; align-self:center; }
+  .ledger li.out b { color:#ff6b78; } .ledger li.in b { color:#7fe3a8; } .ledger li.safe b { color:#7fe3a8; font-weight:600; } .ledger li.ok b { color:#8cc8ff; font-weight:600; } .ledger li.miss b { color:#ffb3b9; font-weight:600; }
+  .ledger li.new { animation:lgIn .6s ease-out both; }
+  @keyframes lgIn { from { background:rgba(255,107,120,.25); } to { background:transparent; } }
 
   /* 하단: 신고 버튼 (메뉴는 오른쪽 아코디언으로 옮김) */
   .dock { display:flex; align-items:center; gap:12px; margin-top:auto; padding:20px 0 4px; }
@@ -484,12 +510,13 @@
         <div class="wm"><div class="ring" id="kpiRing" aria-hidden="true"><i id="kpiPct">100%</i></div><div><b id="kpiBalance">₩3,200,000</b><small id="kpiNote">320만 원 중 한 푼도 안 뺏김</small></div></div>
       </div>
       <div class="wg-col">
-        <div class="wg wg-s glass"><span>방어</span><b id="kpiProg">0 / 9</b></div>
+        <div class="wg wg-s glass"><span>처리</span><b id="kpiProg">0 / 14</b></div>
         <div class="wg wg-s glass"><span>위험 신호</span><b id="kpiFlags">0 / 30</b></div>
       </div>
     </div>
-    <div class="stack-head"><h2>새 메시지 9통, <em>모두 사기입니다</em></h2><p>하나씩 열어 대화해 보세요. 잘못 답하면 320만 원이 사라집니다.</p></div>
-    <section class="scenarios" id="scenarioGrid" aria-label="사건 아홉 건"></section>
+    <div class="ledger glass" id="ledger" aria-label="내 통장 최근 거래"></div>
+    <div class="stack-head"><h2>새 메시지, <em>사기일 수도 아닐 수도</em></h2><p>열어서 대화하고 판단하세요. 사기에 넘어가면 320만 원이 사라지고, 진짜를 무조건 차단해도 감점입니다.</p></div>
+    <section class="scenarios" id="scenarioGrid" aria-label="받은 메시지"></section>
     <div class="dock">
       <button class="rail-btn call glass" data-go="call" aria-expanded="false" aria-controls="reportPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>신고 <b>112</b></button>
     </div>
@@ -524,7 +551,7 @@
 
   <nav class="side" id="side" aria-label="메뉴">
     <section class="acc glass" data-acc="train">
-      <button class="acc-h" id="accTrainH" aria-expanded="false" aria-controls="accTrain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 18.5h4"/></svg><span class="acc-t">훈련</span><span class="acc-m" id="accTrainM">0 / 9 방어</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <button class="acc-h" id="accTrainH" aria-expanded="false" aria-controls="accTrain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 18.5h4"/></svg><span class="acc-t">훈련</span><span class="acc-m" id="accTrainM">0 / 14 처리</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="acc-b" id="accTrain" role="region" aria-labelledby="accTrainH" inert><div><div class="acc-in" id="accTrainList"></div></div></div>
     </section>
     <section class="acc glass" data-acc="dex">
@@ -1000,8 +1027,16 @@ async function loadContent() {
   const c = await ScamApi.content();
   SCENARIOS = c.scenarios;
   FLAGS = c.flags.map(f => ({ ...f, re: new RegExp(f.pattern, f.pattern_flags) }));
-  LESSONS = Object.fromEntries(c.scenarios.map(s => [s.stage_id, s.lessons]));
+  LESSONS = {};
 }
+// 사기인지 진짜인지(제목·유형·교훈 포함)는 서버가 대화가 끝난 뒤에만 알려 준다
+function applyReveal(id, rv) {
+  if (!rv) return;
+  const s = SCENARIOS.find(x => x.stage_id === id); if (!s) return;
+  Object.assign(s, { revealed:true, is_scam:rv.is_scam, title:rv.title, scam_type:rv.scam_type });
+  LESSONS[id] = rv.lessons || [];
+}
+const isScam = s => s.revealed ? s.is_scam !== false : null;
 
 const THEMES = {
   Karrot:    { accent:'#ff6f0f', bubbleOut:'#ff6f0f', outText:'#fff', header:'#fff', headerText:'#111', chatBg:'#fff', avatar:'#ff9a4d', icon:'🥕', title:'중고거래' },
@@ -1023,7 +1058,41 @@ function freshState() {
   return { stageIdx:0, turnIdx:0, trust:100, balance:START_BALANCE, busy:false, lastBubble:null, hintUsed:false,
            cleared:{}, mistakes:[], stats:{ correct:0, trap:0, wrong:0, hints:0, retries:0 },
            stageMiss:Object.fromEntries(SCENARIOS.map(s => [s.stage_id, 0])), found:new Set(), pre:null, post:null, replay:null,
-           sessionId:null, attemptId:null };
+           sessionId:null, attemptId:null, failed:{}, order:SCENARIOS.map((_, i) => i), ledger:[], arrivedShown:0 };
+}
+
+/* ---------- 알림함 순서: 세션마다 무작위로 섞고, 새로고침해도 같은 순서 ---------- */
+function setupInbox() {
+  const key = 'scamlab_order_' + S.sessionId;
+  let order = null;
+  try { order = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+  if (!Array.isArray(order) || order.length !== SCENARIOS.length || new Set(order).size !== SCENARIOS.length || order.some(i => !SCENARIOS[i])) {
+    order = shuffle(SCENARIOS.map((_, i) => i));
+    try { localStorage.setItem(key, JSON.stringify(order)); } catch (e) {}
+  }
+  S.order = order;
+  try { S.ledger = JSON.parse(localStorage.getItem('scamlab_ledger_' + S.sessionId) || '[]'); } catch (e) { S.ledger = []; }
+  if (!S.ledger.length) addLedger('in', '급여 입금', START_BALANCE, '훈련 시작');
+}
+const handled = id => !!S.cleared[id] || !!S.failed[id];
+// 처음엔 4통, 메시지를 하나 끝낼 때마다 새 알림이 1통씩 더 도착한다
+const arrivedCount = () => Math.min(SCENARIOS.length, 4 + S.order.filter(i => handled(SCENARIOS[i].stage_id)).length);
+const posOf = idx => S.order.indexOf(idx) + 1;
+
+/* ---------- 내 통장 ---------- */
+function addLedger(kind, label, amount, note) {
+  S.ledger.unshift({ kind, label, amount, note, at:now(), fresh:true });
+  S.ledger = S.ledger.slice(0, 30);
+  try { localStorage.setItem('scamlab_ledger_' + S.sessionId, JSON.stringify(S.ledger.map(e => ({ ...e, fresh:false })))); } catch (e) {}
+}
+function renderLedger() {
+  const el = $('ledger'); if (!el) return;
+  const rows = S.ledger.slice(0, 3).map(e => {
+    const amt = typeof e.amount === 'number' ? (e.amount > 0 ? '+' : '−') + Math.abs(e.amount).toLocaleString('ko-KR') : esc(e.amount || '');
+    return `<li class="${e.kind}${e.fresh ? ' new' : ''}"><span>${esc(e.label)}<small>${esc(e.at)}${e.note ? ' · ' + esc(e.note) : ''}</small></span><b>${amt}</b></li>`;
+  }).join('');
+  el.innerHTML = `<div class="lg-h"><span>내 통장 · 모아은행 입출금</span><b>${won(S.balance)}</b></div><ul>${rows || '<li><span>거래 내역이 없습니다</span><b></b></li>'}</ul>`;
+  S.ledger.forEach(e => e.fresh = false);
 }
 
 const $ = id => document.getElementById(id);
@@ -1031,7 +1100,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const won = n => '₩' + n.toLocaleString('ko-KR');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const stage = () => SCENARIOS[S.stageIdx];
-const themeOf = s => Object.assign({}, THEMES[s.platform] || THEMES.SMS, s.title ? { title:s.title } : {}, s.icon ? { icon:s.icon } : {});
+const themeOf = s => Object.assign({}, THEMES[s.platform] || THEMES.SMS, { title: s.revealed && s.title ? s.title : '새 메시지' }, s.icon ? { icon:s.icon } : {});
 const theme = () => themeOf(stage());
 const KNUM = ['','한','두','세','네','다섯','여섯','일곱','여덟','아홉','열'];
 const nWord = () => KNUM[SCENARIOS.length] || SCENARIOS.length;
@@ -1065,7 +1134,7 @@ function applyTheme(platform) {
 }
 
 function updateHud() {
-  $('stageTag').textContent = `${S.stageIdx + 1}단계`;
+  $('stageTag').textContent = `메시지 ${posOf(S.stageIdx)}`;
   $('trustNum').textContent = S.trust;
   $('trustBar').setAttribute('aria-valuenow', S.trust);
   const f = $('trustFill');
@@ -1077,6 +1146,7 @@ function updateHud() {
 
 function renderSide() {
   renderScenarioGrid();
+  renderLedger();
   const cleared = Object.keys(S.cleared).length;
   const pct = Math.round(S.balance / START_BALANCE * 100);
   $('kpiBalance').textContent = won(S.balance);
@@ -1084,7 +1154,7 @@ function renderSide() {
   $('kpiRing').style.setProperty('--p', pct);
   $('kpiRing').style.setProperty('--c', pct > 60 ? '#7fe3a8' : pct > 30 ? '#ffc24d' : '#ff6b78');
   $('kpiNote').textContent = pct === 100 ? '320만 원 중 한 푼도 안 뺏김' : pct === 0 ? '320만 원을 모두 잃었습니다' : `320만 원 중 ${Math.round(S.balance / 10000)}만 원 지킴`;
-  $('kpiProg').textContent = `${cleared} / ${SCENARIOS.length}`;
+  $('kpiProg').textContent = `${cleared} / ${SCENARIOS.length}`;  // 처리 = 사기는 막고, 진짜는 제대로 처리한 수
   $('kpiFlags').textContent = `${S.found.size} / ${FLAGS.length}`;
   reportReady = cleared === SCENARIOS.length;
   renderSideMenu(cleared);
@@ -1095,14 +1165,15 @@ let reportReady = false;
 function renderSideMenu(cleared) {
   if (!$('side')) return;
   const n = SCENARIOS.length;
-  $('accTrainM').textContent = `${cleared} / ${n} 방어`;
+  $('accTrainM').textContent = `${cleared} / ${n} 처리`;
   $('accDexM').textContent = `${S.found.size} / ${FLAGS.length}`;
   $('accReportM').textContent = reportReady ? '열림' : '잠김';
-  const label = { done:'방어 성공', now:'지금', locked:'잠김', open:'도전 가능', replay:'다시 하는 중' };
-  $('accTrainList').innerHTML = SCENARIOS.map((s, i) => {
-    const st = stageState(i), [ic, col] = NOTI[s.platform] || ['?', '#666'], c = S.cleared[s.stage_id];
-    const txt = st === 'done' && c ? `방어 · ${c.trust}점` : label[st];
-    return `<button class="acc-row" data-idx="${i}"><span class="ic" style="background:${col}" aria-hidden="true">${ic}</span><span class="nm"><small>${s.stage_id}단계</small>${themeOf(s).title}</span><span class="st ${st === 'done' ? 'done' : st === 'now' || st === 'replay' ? 'now' : ''}">${txt}</span></button>`;
+  const label = { done:'처리', now:'지금', locked:'잠김', open:'안 읽음', replay:'다시 하는 중', failed:'다시 도전' };
+  const arrived = arrivedCount();
+  $('accTrainList').innerHTML = S.order.slice(0, arrived).map(i => {
+    const s = SCENARIOS[i], st = stageState(i), [ic, col] = NOTI[s.platform] || ['?', '#666'], c = S.cleared[s.stage_id];
+    const txt = st === 'done' && c ? `${isScam(s) ? '사기 차단' : '정상 처리'} · ${c.trust}점` : label[st];
+    return `<button class="acc-row" data-idx="${i}"><span class="ic" style="background:${col}" aria-hidden="true">${ic}</span><span class="nm"><small>${esc(s.scammer_profile.name)}</small>${themeOf(s).title}</span><span class="st ${st === 'done' ? 'done' : st === 'now' || st === 'replay' ? 'now' : ''}">${txt}</span></button>`;
   }).join('');
   $('accTrainList').querySelectorAll('.acc-row').forEach(b => b.onclick = () => document.querySelector(`#scenarioGrid .scn[data-idx="${b.dataset.idx}"]`)?.click());
   const tip = $('dexTip').innerHTML;
@@ -1114,7 +1185,7 @@ function renderSideMenu(cleared) {
     $('accReportBody').innerHTML = `<div class="acc-stat"><span>평균 신뢰도</span><b>${avg}점</b></div><div class="acc-stat"><span>지킨 돈</span><b>${won(S.balance)}</b></div><div class="acc-stat"><span>찾은 위험 신호</span><b>${S.found.size} / ${FLAGS.length}</b></div><button class="acc-go" id="accReportGo">리포트 열기</button>`;
     $('accReportGo').onclick = openReport;
   } else {
-    $('accReportBody').innerHTML = `<div class="acc-dots" aria-hidden="true">${SCENARIOS.map(s => `<i class="${S.cleared[s.stage_id] ? 'on' : ''}"></i>`).join('')}</div><p>${nWord()} 단계를 모두 막아 내면 열립니다. 지금까지 <b>${cleared}단계</b>를 막았어요.</p>`;
+    $('accReportBody').innerHTML = `<div class="acc-dots" aria-hidden="true">${S.order.map(i => `<i class="${S.cleared[SCENARIOS[i].stage_id] ? 'on' : ''}"></i>`).join('')}</div><p>메시지 ${SCENARIOS.length}통을 모두 제대로 처리하면 열립니다. 지금까지 <b>${cleared}통</b>을 처리했어요.</p>`;
   }
 }
 function openReport() {
@@ -1263,6 +1334,7 @@ async function choose(opt, turn) {
 
 /** 서버 판정 결과를 화면에 그린다 (선택지·직접 답장 공통) */
 async function handleResult(r) {
+  if (r.reveal) applyReveal(stage().stage_id, r.reveal);
   S.stats[r.type]++;
   S.trust = r.trust;
   if (r.type === 'correct') {
@@ -1309,7 +1381,12 @@ function stopOverSiren() { if (overSiren) { overSiren.stop(); overSiren = null; 
 function overlay(cls, html) { stopOverSiren(); $('dexLayer')?.remove(); $('overlayRoot').innerHTML = `<div class="overlay ${cls}"><div class="inner">${html}</div></div>`; const b = $('overlayRoot').querySelector('.btn'); if (b) b.focus({preventScroll:true}); }
 function closeOverlay() { stopOverSiren(); $('overlayRoot').innerHTML = ''; setTab('train'); }
 function setTab(go) { document.querySelectorAll('.tabbar .rail-btn').forEach(b => b.classList.toggle('on', b.dataset.go === go)); }
-const lessonBox = id => `<div class="box"><span class="ttl">이 수법, 이것만 기억하세요</span><ul>${LESSONS[id].map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+const lessonBox = id => { const s = SCENARIOS.find(x => x.stage_id === id);
+  return `<div class="box"><span class="ttl">${s && isScam(s) === false ? '진짜를 알아보는 법' : '이 수법, 이것만 기억하세요'}</span><ul>${(LESSONS[id] || []).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`; };
+// 정체 공개 한 줄: 사기였는지, 진짜였는지
+const revealLine = s => isScam(s) === false
+  ? `<p class="reveal-tag" style="display:inline-block;margin:2px auto 6px;padding:4px 12px;border-radius:999px;background:rgba(10,132,255,.22);color:#8cc8ff;font-weight:800">✉️ 진짜 메시지였습니다</p>`
+  : `<p class="reveal-tag" style="display:inline-block;margin:2px auto 6px;padding:4px 12px;border-radius:999px;background:rgba(214,31,44,.25);color:#ff8a95;font-weight:800">🚨 사기 메시지였습니다</p>`;
 
 function animateNum(from, to, el) {
   const start = performance.now(), dur = 1300;
@@ -1318,13 +1395,17 @@ function animateNum(from, to, el) {
 }
 
 function gameOver(reason) {
-  const lost = S.balance; if (!S.replay) { S.balance = 0; updateHud(); }
-  const s = stage();
+  const s = stage(), scam = isScam(s) !== false;
+  if (!S.replay) S.failed[s.stage_id] = true;
+  if (!scam) return missedLegit(reason);
+  const lost = S.balance;
+  if (!S.replay) { S.balance = 0; if (lost > 0) addLedger('out', `${themeOf(s).title} · 인터넷뱅킹 출금`, -lost, '사기 계좌로 이체'); updateHud(); }
   overlay('over', `
     <canvas class="siren" aria-hidden="true"></canvas>
-    <div class="eyebrow">${s.stage_id}단계 · 게임 오버</div>
+    <div class="eyebrow">메시지 ${posOf(S.stageIdx)} · 게임 오버</div>
+    ${revealLine(s)}
     <h1>당했습니다</h1>
-    <p>${esc(s.scam_type)}</p>
+    <p>${esc(themeOf(s).title)} · ${esc(s.scam_type)}</p>
     <div class="big" id="lostNum">${won(lost)}</div>
     <div class="reason">${esc(reason).replace(/\n/g,'<br>')}</div>
     ${lessonBox(s.stage_id)}
@@ -1334,8 +1415,30 @@ function gameOver(reason) {
     <button class="btn ghost" id="homeBtn">${S.replay ? '이어서 하기' : '처음으로'}</button>`);
   overSiren = SirenWave.create($('overlayRoot').querySelector('canvas.siren'), { amplitude:.8 }); overSiren.start();
   animateNum(lost, 0, $('lostNum'));
-  $('retryBtn').onclick = () => { if (S.replay) return startStage(S.stageIdx); S.stats.retries++; S.balance = START_BALANCE; startStage(S.stageIdx); };
+  $('retryBtn').onclick = () => { if (S.replay) return startStage(S.stageIdx); restoreBalance(); S.stats.retries++; startStage(S.stageIdx); };
   $('homeBtn').onclick = S.replay ? afterReplay : showTitle;
+}
+// 사기에 당한 뒤 다시 도전하거나 다른 메시지로 넘어가면 훈련용 잔고를 되돌린다
+function restoreBalance() {
+  if (S.balance < START_BALANCE) { addLedger('in', '훈련용 잔고 복구', START_BALANCE - S.balance, '다시 도전'); S.balance = START_BALANCE; updateHud(); }
+}
+// 진짜 메시지를 과잉 의심하거나 무방비로 대해 신뢰도가 바닥난 경우: 돈은 잃지 않지만 놓친 것을 보여 준다
+function missedLegit(reason) {
+  const s = stage();
+  if (!S.replay) addLedger('miss', `${themeOf(s).title} · 놓침`, '놓침');
+  updateHud();
+  overlay('over', `
+    <div class="eyebrow">메시지 ${posOf(S.stageIdx)} · 판단 실패</div>
+    ${revealLine(s)}
+    <h1>진짜였는데 놓쳤어요</h1>
+    <p>${esc(s.scam_type)}</p>
+    <div class="reason">${esc(reason).replace(/\n/g,'<br>')}</div>
+    ${lessonBox(s.stage_id)}
+    <p class="callout">무조건 차단이 답은 아닙니다. <b>무엇을 요구하는지</b> 보고, 의심되면 <b>공식 앱·공식 번호</b>로 확인하세요.</p>
+    <button class="btn" id="retryBtn">이 메시지 다시 하기</button>
+    <button class="btn ghost" id="homeBtn">${S.replay ? '이어서 하기' : '다른 메시지 보기'}</button>`);
+  $('retryBtn').onclick = () => { if (!S.replay) S.stats.retries++; startStage(S.stageIdx); };
+  $('homeBtn').onclick = S.replay ? afterReplay : () => { closeOverlay(); const n = nextInbox(); if (n != null) showStageIntro(n); };
 }
 
 function stageClear() {
@@ -1344,8 +1447,9 @@ function stageClear() {
     const best = S.replay.best[s.stage_id], better = S.trust > best;
     S.replay.best[s.stage_id] = Math.max(best, S.trust);
     overlay('clear', `
-      <div class="eyebrow">${s.stage_id}단계 · 다시 해 보기</div>
-      <h1>또 막아 냈습니다</h1>
+      <div class="eyebrow">메시지 ${posOf(S.stageIdx)} · 다시 해 보기</div>
+      ${revealLine(s)}
+      <h1>${isScam(s) === false ? '이번에도 잘 처리했어요' : '또 막아 냈습니다'}</h1>
       <p>${esc(s.scam_type)}</p>
       <p style="margin-top:6px">이번 신뢰도 <b>${S.trust}</b> / 100 · ${better ? `최고 기록을 <b>${S.trust}</b>점으로 바꿨습니다` : `최고 기록 <b>${best}</b>점 그대로`}</p>
       ${lessonBox(s.stage_id)}
@@ -1353,18 +1457,24 @@ function stageClear() {
     $('nextBtn').onclick = afterReplay;
     return;
   }
-  S.cleared[s.stage_id] = { trust:S.trust }; renderSide();
-  const n = SCENARIOS.length, nextIdx = [...Array(n).keys()].map(k => (S.stageIdx + 1 + k) % n).find(j => !S.cleared[SCENARIOS[j].stage_id]);
-  const last = nextIdx === undefined;
+  const scam = isScam(s) !== false, first = !S.cleared[s.stage_id];
+  S.cleared[s.stage_id] = { trust:S.trust };
+  if (first) addLedger(scam ? 'safe' : 'ok', scam ? `${themeOf(s).title} · 출금 시도 막음` : `${themeOf(s).title} · 정상 처리`, scam ? '차단' : '처리');
+  renderSide();
+  const nextIdx = nextInbox(), last = nextIdx == null;
   overlay('clear', `
-    <div class="eyebrow">${s.stage_id}단계 방어 성공</div>
-    <h1>방어 성공!</h1>
-    <p>${esc(s.scam_type)}</p>
+    ${scam ? artFig(s) : ''}
+    <div class="eyebrow">메시지 ${posOf(S.stageIdx)} · ${scam ? '방어 성공' : '정상 처리'}</div>
+    ${revealLine(s)}
+    <h1>${scam ? '방어 성공!' : '잘 처리했어요!'}</h1>
+    <p>${esc(themeOf(s).title)} · ${esc(s.scam_type)}</p>
     <p style="margin-top:6px">남은 신뢰도 <b>${S.trust}</b> / 100 · 지킨 자산 <b>${won(S.balance)}</b></p>
     ${lessonBox(s.stage_id)}
-    <button class="btn green" id="nextBtn">${last ? '학습 리포트 보기' : '다음 단계 →'}</button>`);
+    <button class="btn green" id="nextBtn">${last ? '학습 리포트 보기' : '다음 메시지 →'}</button>`);
   $('nextBtn').onclick = () => last ? showPostCheck() : showStageIntro(nextIdx);
 }
+// 알림함 순서에서 아직 제대로 처리하지 못한 다음 메시지 (도착한 것 우선)
+function nextInbox() { return topUnread(S.stageIdx); }
 
 function scalePicker(cb) {
   return `<div class="scale" role="radiogroup" aria-label="자신감 1~5점">${[1,2,3,4,5].map(n => `<button role="radio" aria-checked="false" data-v="${n}">${n}</button>`).join('')}</div>
@@ -1407,19 +1517,21 @@ async function showReport(R) {
   const byId = id => SCENARIOS.find(s => s.stage_id === id);
   const score = R.score;
   const grade = [R.grade.grade, R.grade.title, R.grade.message];
+  Object.entries(R.reveals || {}).forEach(([id, rv]) => applyReveal(+id, rv));
   const weak = R.weak_scenarios.map(id => themeOf(byId(id)).title);
+  const J = R.judgment;
   const bars = R.stages.map(st => {
     const s = byId(st.scenario_id), t = st.best_trust, c = t > 60 ? '#3ddc84' : t > 30 ? '#ffb020' : '#ff4d4d';
-    return `<div class="bar-row"><span class="lbl">${themeOf(s).title}</span><span class="bar"><i style="width:${t}%;background:${c}"></i></span><span class="v">${t}</span></div>`;
+    return `<div class="bar-row"><span class="lbl">${isScam(s) === false ? '✉️ ' : '🚨 '}${themeOf(s).title}</span><span class="bar"><i style="width:${t}%;background:${c}"></i></span><span class="v">${t}</span></div>`;
   }).join('');
   const { pre, post, delta } = R.confidence;
   const notes = R.mistakes.length ? R.mistakes.map(m => `
-      <div class="note"><span class="tag ${m.type}">${m.type === 'wrong' ? '치명타' : '빈틈'}</span><b>${m.scenario_id}단계 · 대화 ${m.turn}</b><br>
+      <div class="note"><span class="tag ${m.type}">${m.type === 'wrong' ? '치명타' : '빈틈'}</span><b>${esc(themeOf(byId(m.scenario_id)).title)} · 대화 ${m.turn}</b><br>
       <span class="mine">${esc(m.mine)}</span><br><span class="right">→ ${esc(m.right)}</span><br><span style="opacity:.7">${esc(m.why)}</span></div>`).join('')
     : '<p style="font-size:13px">틀린 선택이 하나도 없습니다. 완벽해요!</p>';
 
   overlay('clear', `
-    <div class="eyebrow">${nWord()} 단계 모두 방어 · 학습 리포트</div>
+    <div class="eyebrow">메시지 ${SCENARIOS.length}통 모두 처리 · 학습 리포트</div>
     <div class="big" style="font-size:68px;margin:0;line-height:1">${grade[0]}</div>
     <h2>${grade[1]}</h2>
     <p>${grade[2]}</p>
@@ -1428,7 +1540,11 @@ async function showReport(R) {
       <div class="stat"><b>${R.found_flags.length}<small style="font-size:12px;opacity:.6">/${R.flag_total}</small></b><span>찾은 위험 신호</span></div>
       <div class="stat"><b>${delta >= 0 ? '+' : ''}${delta}</b><span>자신감 ${pre}→${post}</span></div>
     </div>
-    <div class="box"><span class="ttl">유형별 방어력</span>${bars}
+    ${J ? `<div class="box"><span class="ttl">첫눈에 제대로 판단했나요?</span>
+      <div class="bar-row"><span class="lbl">🚨 사기 차단</span><span class="bar"><i style="width:${J.scam_total ? J.scam_first_try / J.scam_total * 100 : 0}%;background:#ff6b78"></i></span><span class="v">${J.scam_first_try}/${J.scam_total}</span></div>
+      <div class="bar-row"><span class="lbl">✉️ 진짜 처리</span><span class="bar"><i style="width:${J.legit_total ? J.legit_first_try / J.legit_total * 100 : 0}%;background:#0a84ff"></i></span><span class="v">${J.legit_first_try}/${J.legit_total}</span></div>
+      <div style="font-size:12px;opacity:.7;margin-top:6px">사기를 놓치면 돈을 잃고, 진짜를 무조건 의심하면 일상이 멈춥니다. 기준은 '무엇을 요구하는가'와 '공식 경로로 확인했는가'입니다.</div></div>` : ''}
+    <div class="box"><span class="ttl">메시지별 신뢰도</span>${bars}
       <div style="font-size:12px;opacity:.7;margin-top:6px">빈틈 ${R.stats.trap}회 · 치명타 ${R.stats.wrong}회 · 재도전 ${R.stats.retries}회 · 힌트 ${R.stats.hints}회</div>
       ${weak.length ? `<div style="margin-top:6px;color:#ffd27a;font-size:12.5px">⚠️ 가장 취약한 유형: <b>${weak.join(', ')}</b></div>` : ''}
     </div>
@@ -1451,26 +1567,34 @@ const SCN_DATA = {
   9: "assets/scenes/scene-9.webp"
 };
 const SCN_IMG = n => SCN_DATA[n];
-const artFig = (s, cls = '') => `<figure class="stage-art ${cls}"><img src="${SCN_IMG(s.stage_id)}" alt="${esc(themeOf(s).title)} 상황 그림" onerror="this.remove()"></figure>`;
+const artFig = (s, cls = '') => !SCN_IMG(s.stage_id) ? '' : `<figure class="stage-art ${cls}"><img src="${SCN_IMG(s.stage_id)}" alt="${esc(themeOf(s).title)} 상황 그림" onerror="this.remove()"></figure>`;
 
 function showStageIntro(idx, replay = false) {
   if (!replay && S.replay) endReplay();
   if (!replay) S.stageIdx = idx;
-  const s = SCENARIOS[idx], t = themeOf(s);
+  const s = SCENARIOS[idx], t = themeOf(s), app = (NOTI[s.platform] || [,,s.platform])[2];
   overlay('dark stage-intro', `
-    ${artFig(s)}
-    <div class="eyebrow">${replay ? `${s.stage_id}단계 · 다시 해 보기` : `${s.stage_id}단계 / ${SCENARIOS.length}`}</div>
-    <h1>${t.title}</h1>
-    <p>${(NOTI[s.platform] || [,,s.platform])[2]} · ${esc(s.scam_type)}</p>
-    <p style="opacity:.75;font-size:14px">${replay ? `이미 막아 낸 사건입니다. 다시 해도 잔고와 진행 상황은 그대로이고, 더 잘하면 최고 기록만 바뀝니다.` : `${s.turns.length}번의 대화를 버텨내세요`}</p>
-    ${!replay && !S.rulesSeen && (S.rulesSeen = true) ? `<div class="si-rules"><div><span style="color:#3ddc84">방어</span>다음 대화로 넘어갑니다</div><div><span style="color:#ffb020">빈틈</span>신뢰도 -${TRAP_PENALTY}, 0이 되면 끝</div><div><span style="color:#ff4d4d">치명타</span>즉시 게임 오버, 잔고 0원</div><div class="kb">키보드 1·2·3으로도 고를 수 있어요</div></div>` : ''}
+    ${s.revealed && isScam(s) ? artFig(s) : ''}
+    <div class="eyebrow">${replay ? `메시지 ${posOf(idx)} · 다시 해 보기` : `${app} · 새 메시지`}</div>
+    <h1>${s.revealed ? esc(t.title) : esc(s.scammer_profile.name)}</h1>
+    <p>${s.revealed ? `${app} · ${esc(s.scam_type)}` : `${app} · ${esc(s.scammer_profile.name)}`}</p>
+    <p style="opacity:.75;font-size:14px">${replay ? `이미 처리한 메시지입니다. 다시 해도 잔고와 진행 상황은 그대로이고, 더 잘하면 최고 기록만 바뀝니다.` : S.failed[s.stage_id] ? '한 번 놓친 메시지입니다. 다시 판단해 보세요.' : '사기일 수도, 진짜일 수도 있습니다. 대화를 읽고 판단하세요.'}</p>
+    ${!replay && !S.rulesSeen && (S.rulesSeen = true) ? `<div class="si-rules"><div><span style="color:#3ddc84">방어</span>알맞은 대응, 다음 대화로</div><div><span style="color:#ffb020">빈틈</span>아쉬운 대응(과잉 의심 포함), 신뢰도 -${TRAP_PENALTY}</div><div><span style="color:#ff4d4d">치명타</span>사기에 넘어감, 잔고 0원</div><div class="kb">키보드 1·2·3으로도 고를 수 있어요</div></div>` : ''}
     <button class="btn" id="goBtn">${replay ? '다시 해 보기' : '대화 시작'}</button>`);
   $('goBtn').onclick = () => startStage(idx, replay);
   renderSide();
 }
 
 /* ---------- 다시 해 보기: 이미 막아 낸 단계를 연습으로 다시 한다. 잔고·진행·리포트 통계는 끝나면 그대로 되돌리고, 최고 신뢰도만 남긴다 ---------- */
-const frontier = () => { const i = SCENARIOS.findIndex(s => !S.cleared[s.stage_id]); return i < 0 ? SCENARIOS.length : i; };
+// 알림함 맨 위(가장 최근에 도착한) 메시지 중 아직 처리하지 못한 것
+function topUnread(exclude = -1) {
+  const todo = i => i !== exclude && !S.cleared[SCENARIOS[i].stage_id];
+  const arrived = S.order.slice(0, arrivedCount()).filter(todo);
+  if (arrived.length) return arrived[arrived.length - 1];
+  const rest = S.order.filter(todo);
+  return rest.length ? rest[0] : null;
+}
+const frontier = () => { const i = topUnread(); return i == null ? SCENARIOS.length : i; };
 function beginReplay() {
   S.replay = { balance:S.balance, stats:{ ...S.stats }, mistakes:S.mistakes.slice(), stageMiss:{ ...S.stageMiss },
                best:Object.fromEntries(Object.entries(S.cleared).map(([k, v]) => [k, v.trust])) };
@@ -1493,23 +1617,42 @@ function stageState(i) {
   const s = SCENARIOS[i];
   if (S.replay && i === S.stageIdx) return 'replay';
   if (S.cleared[s.stage_id]) return 'done';
-  return i === S.stageIdx ? 'now' : 'open';
+  if (i === S.stageIdx && S.pre != null && ($('messages').children.length || $('overlayRoot').querySelector('.stage-intro'))) return 'now';
+  return S.failed[s.stage_id] ? 'failed' : 'open';
 }
 // 사건 = 잠금화면 알림. 보낸 사람과 첫 메시지를 미리 보여 주고, 아직 열리지 않은 사건은 내용을 흐리게 가린다
 const NOTI = { Karrot:['홍','#ff7e36','홍당무'], SMS:['문','#34a35a','문자'], KakaoTalk:['카','#c9a800','코코아톡'], Instagram:['인','#c0479a','인스타그롬'], Telegram:['텔','#2f8fd8','텔레그롬'] };
+// 알림함: 도착한 메시지만 보인다. 아직 처리하지 않은 메시지가 위, 처리한 메시지는 아래에 작게.
+// 사기인지 진짜인지는 대화를 끝내야 카드에 표시된다
 function renderScenarioGrid() {
   const g = $('scenarioGrid'); if (!g) return;
-  const label = { done:'방어 성공', now:'지금', locked:'', open:'', replay:'다시 하는 중' };
-  g.innerHTML = SCENARIOS.map((s, i) => {
-    const t = themeOf(s), st = stageState(i), [ic, col, app] = NOTI[s.platform] || ['?', '#666', s.platform];
-    const when = st === 'locked' || st === 'open' ? `${s.stage_id}단계` : label[st];
-    const msg = s.turns[0].scammer_msg.replace(/\s+/g, ' ');
-    return `<button class="scn glass ${st}" data-idx="${i}" aria-label="${s.stage_id}단계 ${t.title}, ${app}, ${st === 'now' ? '진행 중' : st === 'done' ? '방어 성공, 눌러서 다시 해 보기' : st === 'replay' ? '다시 하는 중' : '도전 가능'}">
+  const arrived = S.order.slice(0, arrivedCount());
+  const card = (i, k, isNew) => {
+    const s = SCENARIOS[i], t = themeOf(s), st = stageState(i), [ic, col, app] = NOTI[s.platform] || ['?', '#666', s.platform];
+    const done = st === 'done', small = done;
+    const when = st === 'now' ? '지금' : st === 'replay' ? '다시 하는 중'
+      : done ? `<span class="t ${isScam(s) ? 'scam' : 'legit'}">${isScam(s) ? '🛡 사기 차단' : '✓ 정상 처리'}</span>`
+      : st === 'failed' ? (isScam(s) ? '당함 · 다시' : '놓침 · 다시')
+      : `<i aria-hidden="true"></i>${k === 0 ? '방금' : `${k * 3}분 전`}`;
+    const sub = s.revealed ? ` · ${t.title}` : '';
+    const msg = s.turns[0].scammer_msg.replace(/\[Web발신\]\s*/g, '').replace(/\s+/g, ' ');
+    const aria = done ? `${t.title}, 처리 완료, 눌러서 다시 해 보기` : st === 'failed' ? '놓친 메시지, 다시 도전' : '읽지 않은 메시지';
+    return `<button class="scn glass ${st}${small ? ' small' : ''}${isNew ? ' arrive' : ''}" style="--d:${isNew ? (isNew - 1) * 0.35 : 0}s" data-idx="${i}" aria-label="${esc(s.scammer_profile.name)}, ${app}, ${aria}">
       <span class="ic" style="background:${col}" aria-hidden="true">${ic}</span>
-      <span class="tx"><span class="who">${esc(s.scammer_profile.name)}<span>${app} · ${t.title}</span></span><span class="msg" ${st === 'locked' ? 'aria-hidden="true"' : ''}>${esc(msg)}</span></span>
-      <span class="t">${when}</span>
+      <span class="tx"><span class="who">${esc(s.scammer_profile.name)}<span>${app}${esc(sub)}</span></span><span class="msg">${esc(msg)}</span></span>
+      ${done ? when : `<span class="t">${when}</span>`}
     </button>`;
-  }).join('');
+  };
+  // 새로 도착한 알림만 애니메이션 (세션을 시작한 뒤에만)
+  const shown = S.pre != null ? S.arrivedShown : arrived.length;
+  let nNew = 0;
+  const open = arrived.filter(i => !S.cleared[SCENARIOS[i].stage_id]).reverse();   // 최근 도착이 위로
+  const closed = arrived.filter(i => S.cleared[SCENARIOS[i].stage_id]);
+  const waiting = SCENARIOS.length - arrived.length;
+  g.innerHTML = open.map((i, k) => card(i, k, S.order.indexOf(i) >= shown ? ++nNew : 0)).join('')
+    + (waiting ? `<div class="inbox-wait">메시지를 처리하면 새 알림이 도착합니다 · 남은 알림 ${waiting}통</div>` : '')
+    + (closed.length ? `<div class="inbox-sub">처리한 메시지 ${closed.length}</div>` + closed.map(i => card(i, 0, 0)).join('') : '');
+  if (S.pre != null) S.arrivedShown = arrived.length;
   g.querySelectorAll('.scn').forEach(b => b.onclick = () => openScenario(+b.dataset.idx));
 }
 // 진행 중 카드로 바로 들어갈 수 있는 경우: 스테이지 소개가 떠 있을 때만(대화·결과·도감 화면에서는 점수 규칙을 건너뛰지 않도록 막는다)
@@ -1524,7 +1667,7 @@ function openScenario(idx) {
   const st = stageState(idx);
   if (st !== 'replay' && canSwitch()) {
     // 게임 오버 화면에서 다른 사건으로 넘어가면 '다시 도전'과 똑같이 잔고를 되돌린다
-    if ($('overlayRoot').querySelector('.overlay.over') && !S.replay) { S.stats.retries++; S.balance = START_BALANCE; updateHud(); }
+    if ($('overlayRoot').querySelector('.overlay.over') && !S.replay) { S.stats.retries++; restoreBalance(); }
     if (st === 'done') showStageIntro(idx, true); else showStageIntro(idx);
     focusPhone(); return;
   }
@@ -1536,12 +1679,12 @@ function openScenario(idx) {
 }
 function previewScenario(idx, why) {
   const s = SCENARIOS[idx], t = themeOf(s), m = $('artModal');
-  m.innerHTML = `<div class="art-card glass" role="dialog" aria-modal="true" aria-label="${s.stage_id}단계 미리보기">
-    ${artFig(s, 'big')}
+  m.innerHTML = `<div class="art-card glass" role="dialog" aria-modal="true" aria-label="메시지 미리보기">
+    ${s.revealed && isScam(s) ? artFig(s, 'big') : ''}
     <div class="art-body">
-      <div class="eyebrow">${s.stage_id}단계 · ${(NOTI[s.platform] || [,,s.platform])[2]}</div>
-      <h2>${t.title}</h2>
-      <p>${esc(s.scam_type)}</p>
+      <div class="eyebrow">${(NOTI[s.platform] || [,,s.platform])[2]} · ${esc(s.scammer_profile.name)}</div>
+      <h2>${s.revealed ? esc(t.title) : '새 메시지'}</h2>
+      <p>${s.revealed ? esc(s.scam_type) : '열어 보기 전에는 사기인지 진짜인지 알 수 없습니다.'}</p>
       <p class="why">${why}</p>
       <div class="art-actions"><button class="btn ghost" id="artClose">닫기</button></div>
     </div></div>`;
@@ -1581,11 +1724,11 @@ function renderTitle(el) {
     <div class="ts-status"><span>${$('clock').textContent}</span><span>●●● 5G ▮</span></div>
     <div class="ts-scroll">
       <h1 class="ts-title">사기 <em>생존기</em></h1>
-      <p class="ts-msg">사기꾼 ${nWord()} 명이<br>당신의 <b>${won(START_BALANCE)}</b>을<br>노리고 있습니다.</p>
-      <p class="ts-goal">채팅 속 <b>위험 신호</b>를 찾아내고<br>끝까지 지켜내세요.</p>
+      <p class="ts-msg">메시지 ${SCENARIOS.length}통이 도착합니다.<br>그중 몇 통은 당신의 <b>${won(START_BALANCE)}</b>을<br>노리는 사기입니다.</p>
+      <p class="ts-goal">사기는 <b>막고</b>, 진짜는 <b>제대로 처리</b>하세요.<br>무조건 의심하는 것도 정답이 아닙니다.</p>
     </div>
     <div class="ts-foot" id="tsFoot">
-      <button class="btn" id="startBtn">${S.sessionId ? `이어서 하기 · ${Object.keys(S.cleared).length} / ${SCENARIOS.length} 방어` : '훈련 시작'}</button>
+      <button class="btn" id="startBtn">${S.sessionId ? `이어서 하기 · ${Object.keys(S.cleared).length} / ${SCENARIOS.length} 처리` : '훈련 시작'}</button>
       ${S.sessionId ? '<button class="btn ghost" id="freshBtn">처음부터 새로 하기</button>' : ''}
       <div class="ts-legal">게임 속 링크, 계정, 기관 명의는 모두 교육용 가상 설정입니다.</div>
     </div>`;
@@ -1598,7 +1741,9 @@ function renderTitle(el) {
         const ses = await ScamApi.startSession(v);
         applyRules(ses.rules);
         Object.assign(S, { pre:v, sessionId:ses.session_id, balance:START_BALANCE });
+        setupInbox();
         updateHud();
+        S.arrivedShown = 0;   // 입장하면 알림이 하나씩 도착하는 연출
         setTimeout(() => Intro.enter(), 180);
       } catch (e) {
         $('preMsg').textContent = '서버에 연결하지 못했습니다. 잠시 후 다시 골라 주세요.';
@@ -1619,10 +1764,16 @@ async function restoreSession() {
   S.pre = saved.pre_confidence;
   S.balance = sum.balance;
   S.rulesSeen = true;
-  sum.stages.filter(st => st.cleared).forEach(st => { S.cleared[st.scenario_id] = { trust:st.best_trust }; });
+  sum.stages.forEach(st => {
+    if (st.reveal) applyReveal(st.scenario_id, st.reveal);
+    if (st.cleared) S.cleared[st.scenario_id] = { trust:st.best_trust };
+    else if (st.failed) S.failed[st.scenario_id] = true;
+  });
+  setupInbox();
   sum.found_flags.forEach(id => S.found.add(id));
   S.stageIdx = Math.min(frontier(), SCENARIOS.length - 1);
   updateHud();
+  S.arrivedShown = 0;
 }
 
 function resetGame() {
@@ -1673,7 +1824,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { $('reportP
 function openSheet() {
   const item = document.querySelector('.sheet-item[data-go=report]');
   item.disabled = !reportReady;
-  $('sheetReportNote').textContent = reportReady ? '' : `${SCENARIOS.length}단계 완료 후`;
+  $('sheetReportNote').textContent = reportReady ? '' : `메시지 ${SCENARIOS.length}통 처리 후`;
   $('sheetDexCount').textContent = `${S.found.size} / ${FLAGS.length}`;
   $('sheetDim').hidden = false; $('menuSheet').hidden = false;
   $('menuBtn').setAttribute('aria-expanded', 'true');
@@ -1836,7 +1987,9 @@ function renderFree(turn) {
   scrollDown();
 }
 
+const FREE_REPLY = false;
 function addFreeToggle(turn) {
+  if (!FREE_REPLY) return;
   const head = $('options').querySelector('.opt-head'); if (!head || $('freeTog')) return;
   const hint = $('hintBtn');
   const wrap = document.createElement('span'); wrap.className = 'opt-tools';

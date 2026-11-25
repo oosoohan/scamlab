@@ -59,16 +59,16 @@ test('evaluateSession: 프론트 showReport()와 같은 점수·등급', () => {
     at(1, answersFor(1, { 2: 'wrong' }, [1])),        // 1단계 실패 (재도전 +1, 힌트 +1)
     at(1, answersFor(1, { 3: 'trap' }, [1])),         // 1단계 클리어 75점 (힌트 +1)
     at(2, answersFor(2, {}, [1])),                     // 힌트 +1
-    ...[3, 4, 5, 6, 7, 8, 9].map(s => at(s, answersFor(s))),
+    ...[3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map(s => at(s, answersFor(s))),
     at(1, answersFor(1, { 4: 'trap' }, [2]), 1)        // 다시 해 보기: 75점 → 최고 기록 그대로, 힌트·빈틈은 통계에서 빠짐
   ];
   const ev = evaluateSession({ content, attempts, rules, pre: 2, post: 4 });
 
-  // 평균 = round((75 + 100×8) / 9) = round(97.2) = 97,  점수 = 97 − 재도전 1×5 − 힌트 3×1 = 89
+  // 평균 = round((75 + 100×13) / 14) = round(98.2) = 98,  점수 = 98 − 재도전 1×5 − 힌트 3×1 = 90
   assert.equal(ev.report_ready, true);
-  assert.equal(ev.avg_trust, 97);
-  assert.deepEqual(ev.stats, { correct: 57, trap: 1, wrong: 1, hints: 3, retries: 1 });
-  assert.equal(ev.score, 89);
+  assert.equal(ev.avg_trust, 98);
+  assert.deepEqual(ev.stats, { correct: 57 + 17, trap: 1, wrong: 1, hints: 3, retries: 1 });
+  assert.equal(ev.score, 90);
   assert.equal(ev.grade.grade, 'A');
   assert.equal(ev.stages.find(s => s.scenario_id === 1).best_trust, 75);
   assert.equal(ev.mistakes.length, 2);

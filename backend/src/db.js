@@ -30,6 +30,9 @@ function openDb(url) {
 /** 테이블이 없으면 만든다 (여러 번 실행해도 안전) */
 async function initSchema(db) {
   await db.executeMultiple(SCHEMA_SQL);
+  // 예전 DB(Turso 포함)에 나중에 추가된 열을 붙인다. CREATE TABLE IF NOT EXISTS는 열을 추가하지 않기 때문
+  const cols = (await db.execute('PRAGMA table_info(scenarios)')).rows.map(r => r.name);
+  if (!cols.includes('is_scam')) await db.execute('ALTER TABLE scenarios ADD COLUMN is_scam INTEGER NOT NULL DEFAULT 1');
 }
 
 /** libsql Row → 평범한 객체 */
