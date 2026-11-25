@@ -555,7 +555,7 @@
     <div class="lock-clock" id="lockClock" aria-hidden="true"></div>
     <div class="widgets">
       <div class="wg wg-money glass"><span>지킨 돈</span>
-        <div class="wm"><div class="ring" id="kpiRing" aria-hidden="true"><i id="kpiPct">100%</i></div><div><b id="kpiBalance">₩3,200,000</b><small id="kpiNote">320만 원 중 한 푼도 안 뺏김</small></div></div>
+        <div class="wm"><div class="ring" id="kpiRing" aria-hidden="true"><i id="kpiPct">100%</i></div><div><b id="kpiBalance">₩3,200,000</b><small id="kpiNote">한 푼도 안 뺏김</small></div></div>
       </div>
       <div class="wg-col">
         <div class="wg wg-s glass"><span>처리</span><b id="kpiProg">0 / 14</b></div>
@@ -563,7 +563,7 @@
       </div>
     </div>
     <div class="ledger glass" id="ledger" aria-label="내 통장 최근 거래"></div>
-    <div class="stack-head"><h2>새 메시지, <em>사기일 수도 아닐 수도</em></h2><p>열어서 대화하고 판단하세요. 사기에 넘어가면 320만 원이 사라지고, 진짜를 무조건 차단해도 감점입니다.</p></div>
+    <div class="stack-head"><h2>새 메시지, <em>사기일 수도 아닐 수도</em></h2><p>열어서 대화하고 판단하세요. 사기에 세 번 넘어가면 통장이 비고, 진짜를 무조건 차단해도 감점입니다.</p></div>
     <section class="scenarios" id="scenarioGrid" aria-label="받은 메시지"></section>
     <div class="dock">
       <button class="rail-btn call glass" data-go="call" aria-expanded="false" aria-controls="reportPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>신고 <b>112</b></button>
@@ -1110,9 +1110,10 @@ const THEMES = {
 // 기본값. 세션을 만들면 서버 규칙(rules/v1.json) 값으로 바뀐다
 let START_BALANCE = 3200000;
 let TRAP_PENALTY = 25;
-// 규칙 v2(MONEY): 치명타·링크 열기는 그때 남은 돈의 일부를 잃고 대화가 이어진다(충전 없음). v1이면 치명타 즉시 실패
-let MONEY = false;
-function applyRules(r) { if (!r) return; START_BALANCE = r.start_balance; TRAP_PENALTY = r.trap_penalty; MONEY = !!r.money_mode; }
+// 규칙 v2(MONEY): 치명타·링크 열기 = 털림. 무작위 금액으로 STRIKES번이면 통장이 빈다(충전 없음). v1이면 치명타 즉시 실패
+let MONEY = false, STRIKES = 3;
+const strikeTag = sum => sum && sum.strikes ? ` (${Math.min(sum.strikes, STRIKES)}/${STRIKES})` : '';
+function applyRules(r) { if (!r) return; START_BALANCE = r.start_balance; TRAP_PENALTY = r.trap_penalty; MONEY = !!r.money_mode; STRIKES = r.strikes_to_zero || 3; }
 
 /* ---------- 상태 ---------- */
 // sessionId·attemptId: 서버 기록 id. 점수·오답 노트는 서버가 계산하고, 여기 stats·stageMiss는 화면 표시용이다
@@ -1226,7 +1227,8 @@ function renderSide() {
   $('kpiPct').textContent = pct + '%';
   $('kpiRing').style.setProperty('--p', pct);
   $('kpiRing').style.setProperty('--c', pct > 60 ? '#7fe3a8' : pct > 30 ? '#ffc24d' : '#ff6b78');
-  $('kpiNote').textContent = pct === 100 ? '320만 원 중 한 푼도 안 뺏김' : pct === 0 ? '320만 원을 모두 잃었습니다' : `320만 원 중 ${Math.round(S.balance / 10000)}만 원 지킴`;
+  const man = v => `${Math.round(v / 10000).toLocaleString('ko-KR')}만 원`;
+  $('kpiNote').textContent = pct === 100 ? `${man(START_BALANCE)} 중 한 푼도 안 뺏김` : S.balance === 0 ? `${man(START_BALANCE)}을 모두 털렸습니다` : `${man(START_BALANCE)} 중 ${man(S.balance)} 지킴`;
   $('kpiProg').textContent = `${cleared} / ${SCENARIOS.length}`;  // 처리 = 사기는 막고, 진짜는 제대로 처리한 수
   $('kpiFlags').textContent = `${S.found.size} / ${FLAGS.length}`;
   reportReady = cleared === SCENARIOS.length;
@@ -1425,7 +1427,7 @@ async function handleResult(r) {
   } else {
     S.stageMiss[stage().stage_id]++;
     updateHud(); shakePhone(true); flashSiren();
-    addSys('wrong', MONEY && r.loss ? `❌ 치명적 실수 · −${won(r.loss).replace('₩', '')}원 · 신뢰도 ${r.trust_delta}` : '❌ 치명적 실수', esc(r.feedback) + modelAnswer(r));
+    addSys('wrong', !MONEY ? '❌ 치명적 실수' : r.loss ? `❌ 치명적 실수 · ${won(r.loss)} 털림${strikeTag(r.summary)}` : '❌ 치명적 실수 · 통장은 이미 비었습니다', esc(r.feedback) + modelAnswer(r));
     await sleep(450); revealFlags(S.hintUsed);
     await sleep(1500);
   }
@@ -2058,9 +2060,11 @@ function openFakePage(url) {
       if (r.charged) {
         charged = r.loss;
         S.attemptLoss = (S.attemptLoss || 0) + r.loss;
-        addLedger('out', `${host} · 자동 결제`, -r.loss, '출처 불명 링크');
+        if (r.loss) addLedger('out', `${host} · 자동 결제`, -r.loss, '출처 불명 링크');
         const b = $('fwLoss');
-        if (b) { b.hidden = false; b.innerHTML = `⚠️ 링크에 접속하자마자 <b>${won(r.loss)}</b>이 결제되었습니다<small>남은 잔고 ${won(S.balance)} · 출처 불명 링크는 열기만 해도 위험합니다</small>`; }
+        if (b) { b.hidden = false; b.innerHTML = r.loss
+          ? `⚠️ 링크에 접속하자마자 <b>${won(r.loss)}</b>이 빠져나갔습니다${strikeTag(r.summary)}<small>남은 잔고 ${won(S.balance)} · 출처 불명 링크는 열기만 해도 위험합니다</small>`
+          : `⚠️ 이 링크로 남은 돈까지 노렸지만 통장은 이미 비어 있습니다<small>출처 불명 링크는 열기만 해도 위험합니다</small>`; }
         shakePhone(true); flashSiren();
       }
       updateHud();

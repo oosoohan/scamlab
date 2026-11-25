@@ -45,19 +45,20 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
   const evaluate = async (session, attempts) => evaluateSession({
     content, rules: loadRules(session.scoring_version),
     attempts: attempts || await store.sessionAttempts(session.id),
-    pre: session.pre_confidence, post: session.post_confidence
+    pre: session.pre_confidence, post: session.post_confidence, seed: session.id
   });
   /** 화면 위 HUD·오른쪽 메뉴에 필요한 만큼만 */
   // 사기인지 진짜인지는 그 사건 대화를 끝까지 한 번이라도 마친 뒤에만 알려 준다
   /** 화면에 필요한 규칙 값만 (money_mode: 치명타·링크가 돈을 깎고 대화가 이어지는 v2 규칙인지) */
   const publicRules = rules => ({
     start_trust: rules.start_trust, start_balance: rules.start_balance, trap_penalty: rules.trap_penalty,
-    money_mode: !rules.wrong_is_fatal, wrong_loss_rate: rules.wrong_loss_rate || 0, link_loss_rate: rules.link_loss_rate || 0
+    money_mode: !rules.wrong_is_fatal, strikes_to_zero: rules.strikes_to_zero || null
   });
 
   const summaryOf = ev => ({
     balance: ev.balance,
     lost: ev.lost,
+    strikes: ev.strikes,
     progress: ev.progress,
     found_flags: ev.found_flags,
     flag_total: ev.flag_total,
@@ -261,7 +262,7 @@ function createApiRouter({ store, content, judge = judgeFreeText }) {
     if (!url || !scenario.turns.some(t => t.scammer_msg.includes(url))) throw bad('INVALID_URL', '이 대화에 없는 링크입니다.');
     const rules = loadRules(session.scoring_version);
     let charged = false;
-    if (attempt.status === 'playing' && !attempt.is_replay && rules.link_loss_rate) charged = await store.recordLinkClick(attempt.id, url);
+    if (attempt.status === 'playing' && !attempt.is_replay && !rules.wrong_is_fatal) charged = await store.recordLinkClick(attempt.id, url);
     const ev = await evaluate(session, await store.sessionAttempts(session.id));
     res.json({ charged, loss: charged ? ev.last_loss : 0, summary: summaryOf(ev) });
   }));
