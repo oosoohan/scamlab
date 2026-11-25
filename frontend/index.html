@@ -177,6 +177,9 @@
   }
   .report-card { padding:18px 20px 12px; border-radius:24px; font-size:15px; line-height:1.6; }
   .report-card h3 { font-size:16px; font-weight:700; margin-bottom:6px; }
+  /* 폰 화면 전용 신고처 카드 (넓은 화면은 오른쪽 아래 카드·왼쪽 아래 버튼이 대신한다) */
+  .m-help { display:none; margin-top:14px; }
+  .m-help-tip { font-size:13px; color:rgba(255,255,255,.66); padding-top:8px; border-top:1px solid rgba(255,255,255,.12); }
   .report-card .r { display:flex; align-items:baseline; gap:10px; padding:9px 0; border-top:1px solid rgba(255,255,255,.12); color:rgba(255,255,255,.82); text-decoration:none; }
   .report-card .r:first-of-type { border-top:0; }
   .report-card b { font-size:20px; font-weight:800; color:#fff; min-width:52px; font-variant-numeric:tabular-nums; }
@@ -250,6 +253,7 @@
     .console::before, .console::after{display:none}
     .phone{width:100%; height:100vh; height:100dvh; border-radius:0; box-shadow:none}
     .hud .menu-btn{display:inline-flex}
+    .m-help{display:block}
   }
 
   .statusbar { height:44px; padding:14px 28px 0; display:flex; justify-content:space-between; font-size:14px; font-weight:600; background:var(--header); color:var(--header-text); flex-shrink:0; }
@@ -275,8 +279,8 @@
   .sheet-call { padding:14px 4px 6px; border-bottom:1px solid #eef0f3; }
   .sheet-call h3 { display:flex; align-items:center; gap:14px; font-size:17px; font-weight:600; }
   .sheet-call h3 svg { width:22px; height:22px; color:#555; }
-  .sheet-call a { display:flex; align-items:baseline; gap:12px; min-height:48px; padding:10px 0 0 36px; color:#111; text-decoration:none; font-size:15px; color:#3d4047; }
-  .sheet-call a b { font-size:20px; font-weight:800; color:#c8102e; font-variant-numeric:tabular-nums; min-width:52px; }
+  .sheet-call .r { display:flex; align-items:baseline; gap:12px; min-height:48px; padding:10px 0 0 36px; color:#111; text-decoration:none; font-size:15px; color:#3d4047; }
+  .sheet-call .r b { font-size:20px; font-weight:800; color:#c8102e; font-variant-numeric:tabular-nums; min-width:52px; }
   .sheet-item:last-child { border-bottom:0; }
   .dex-btn { display:none; background:#2b2f3a; border:0; color:#fff; border-radius:8px; padding:4px 7px; font-size:12px; cursor:pointer; }
 
@@ -537,9 +541,9 @@
     <button class="sheet-item" data-go="report" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>학습 리포트<small id="sheetReportNote">9단계 완료 후</small></button>
     <div class="sheet-call">
       <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>실제 피해 신고처</h3>
-      <a href="tel:112"><b>112</b>경찰 · 보이스피싱 신고·지급정지</a>
-      <a href="tel:1332"><b>1332</b>금융감독원 · 금융사기 상담</a>
-      <a href="tel:118"><b>118</b>불법스팸·스미싱 신고</a>
+      <div class="r"><b>112</b>경찰 · 보이스피싱 신고·지급정지</div>
+      <div class="r"><b>1332</b>금융감독원 · 금융사기 상담</div>
+      <div class="r"><b>118</b>불법스팸·스미싱 신고</div>
     </div>
     <button class="sheet-item" data-go="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>메시지 목록으로</button>
   </div>
@@ -562,6 +566,13 @@
     <div class="dock">
       <button class="rail-btn call glass" data-go="call" aria-expanded="false" aria-controls="reportPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>신고 <b>112</b></button>
     </div>
+    <section class="report-card glass m-help" aria-label="실제 피해 신고처">
+      <h3>실제로 당했다면 여기로 신고하세요</h3>
+      <div class="r"><b>112</b>경찰 · 보이스피싱 신고·지급정지</div>
+      <div class="r"><b>1332</b>금융감독원 · 금융사기 상담</div>
+      <div class="r"><b>118</b>불법스팸·스미싱 신고</div>
+      <p class="m-help-tip">돈을 보냈다면 1분이라도 빨리 112나 내 은행에 지급정지를 요청하세요.</p>
+    </section>
     <p class="legal">게임 속 서비스·계정 이름과 링크는 모두 교육용 가상 설정이며 실제 기업과 관계없습니다. 링크 주소는 실제로 접속되지 않는 예약 주소(.example)입니다.</p>
   </main>
 
@@ -607,9 +618,9 @@
       <div class="side-foot">
       <section class="report-card glass" aria-label="실제 피해 신고처">
         <h3>이미 돈을 보냈다면 바로 신고</h3>
-        <a class="r" href="tel:112"><b>112</b>경찰 · 보이스피싱 신고·지급정지</a>
-        <a class="r" href="tel:1332"><b>1332</b>금융감독원 · 금융사기 상담</a>
-        <a class="r" href="tel:118"><b>118</b>불법스팸·스미싱 신고</a>
+        <div class="r"><b>112</b>경찰 · 보이스피싱 신고·지급정지</div>
+        <div class="r"><b>1332</b>금융감독원 · 금융사기 상담</div>
+        <div class="r"><b>118</b>불법스팸·스미싱 신고</div>
       </section>
       <p class="legal">게임 속 서비스·계정 이름과 링크는 모두 교육용 가상 설정이며 실제 기업과 관계없습니다. 링크 주소는 실제로 접속되지 않는 예약 주소(.example)입니다.</p>
     </div>
