@@ -393,6 +393,22 @@
   .btn:disabled, .btn:disabled:hover { background:rgba(255,255,255,.1); color:rgba(255,255,255,.55); cursor:not-allowed; box-shadow:none; }
   .overlay canvas.siren { display:block; width:calc(100% + 52px); height:72px; margin:-20px -26px 8px; }
 
+  /* ===== 시작 전 목적 화면: 인트로 폰 화면(#introSlot) 안을 검게 덮고 문장이 한 줄씩 떠오른다. 버튼(또는 Enter)을 누르면 같은 화면에서 자가진단으로 넘어간다 ===== */
+  .purpose { position:absolute; inset:0; z-index:5; background:#030408; display:flex; flex-direction:column; justify-content:center; padding:12% 8% 7%; color:#fff; text-align:left; word-break:keep-all; animation:ppIn .5s ease-out; }
+  .purpose.out { opacity:0; transition:opacity .35s; }
+  .purpose .pp-eb { font-size:11px; font-weight:700; letter-spacing:.1em; color:#ff5a5f; margin-bottom:16px; }
+  .purpose h2 { font-size:clamp(21px,2.3vw,27px); font-weight:800; line-height:1.35; letter-spacing:-.6px; }
+  .purpose p { font-size:clamp(13px,1.15vw,15px); line-height:1.65; color:rgba(255,255,255,.72); margin-top:22px; }
+  .purpose .pp-key { font-size:clamp(16px,1.6vw,19px); font-weight:800; line-height:1.45; letter-spacing:-.4px; margin-top:22px; padding-left:12px; border-left:3px solid #e53935; }
+  .purpose .pp-go { margin-top:auto; width:100%; min-width:0; }
+  .purpose .pp-hint { margin-top:8px; text-align:center; color:rgba(255,255,255,.4); font-size:10.5px; }
+  .purpose .pp-body { margin:auto 0; }
+  @media (hover:none) { .purpose .pp-hint { display:none; } }   /* 터치 화면에는 Enter 안내가 필요 없다 */
+  .purpose .pp-eb, .purpose h2, .purpose p, .purpose .pp-key, .purpose .pp-go, .purpose .pp-hint { opacity:0; transform:translateY(8px); animation:ppUp .8s cubic-bezier(.2,.8,.2,1) forwards; }
+  .purpose .pp-eb { animation-delay:.1s } .purpose h2 { animation-delay:.3s } .purpose p { animation-delay:1.9s } .purpose .pp-key { animation-delay:3s } .purpose .pp-go, .purpose .pp-hint { animation-delay:4.2s }
+  @keyframes ppUp { to { opacity:1; transform:none; } }
+  @keyframes ppIn { from { opacity:0; } to { opacity:1; } }
+  @media (prefers-reduced-motion: reduce) { .purpose, .purpose .pp-eb, .purpose h2, .purpose p, .purpose .pp-key, .purpose .pp-go, .purpose .pp-hint { animation:none; opacity:1; transform:none; } }
   /* ===== intro ===== */
   .boot-cover { position:fixed; inset:0; z-index:101; background:#030408; }
   .intro { position:fixed; inset:0; z-index:100; background:#030408; overflow:hidden; }
@@ -1767,6 +1783,28 @@ async function startStage(idx, replay = false) {
   playTurn();
 }
 
+// 시작 전 목적 화면: 인트로 폰 화면 안에서 훈련의 의의를 먼저 새기고 시작한다. 버튼·Enter·Space로 넘어간다
+function showPurpose(next) {
+  const el = document.createElement('div');
+  el.className = 'purpose'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'ppTitle');
+  el.innerHTML = `<div class="pp-body">
+      <div class="pp-eb">사기 생존기 · 시작하기 전에</div>
+      <h2 id="ppTitle">여기서 속으세요,<br>현실에서 속지 않도록.</h2>
+      <p>사기는 당신이 똑똑하지 않아서 당하는 게 아닙니다. 급하게, 다정하게, 공식처럼 다가오기 때문입니다.</p>
+      <div class="pp-key">여기서 연습한 한 번이,<br>진짜 한 번을 막습니다.</div>
+    </div>
+    <button class="btn pp-go" type="button">훈련 시작하기 ›</button>
+    <div class="pp-hint" aria-hidden="true">Enter 키로 넘어가기</div>`;
+  ($('introSlot') || document.body).appendChild(el);   // 인트로 폰 화면 안에 띄운다
+  const btn = el.querySelector('.pp-go');
+  let done = false;
+  const go = () => { if (done) return; done = true; document.removeEventListener('keydown', onKey, true); el.classList.add('out'); setTimeout(() => { el.remove(); next(); }, 350); };
+  const onKey = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); go(); } };
+  btn.onclick = go;
+  document.addEventListener('keydown', onKey, true);
+  btn.focus({ preventScroll: true });
+}
+
 function renderTitle(el) {
   el.innerHTML = `
     <div class="ts-status"><span>${$('clock').textContent}</span><span>●●● 5G ▮</span></div>
@@ -1798,8 +1836,8 @@ function renderTitle(el) {
       }
     });
   };
-  $('startBtn').onclick = () => { if (S.pre != null) Intro.enter(); else askPre(); };
-  if ($('freshBtn')) $('freshBtn').onclick = () => { ScamApi.forgetSession(); resetGame(); askPre(); };
+  $('startBtn').onclick = () => { if (S.pre != null) Intro.enter(); else showPurpose(askPre); };
+  if ($('freshBtn')) $('freshBtn').onclick = () => { ScamApi.forgetSession(); resetGame(); showPurpose(askPre); };
 }
 
 // 새로고침해도 이어 하기: 저장된 세션이 있으면 서버 기록으로 진행 상황을 되살린다
