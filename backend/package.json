@@ -1,0 +1,20 @@
+{
+  "name": "scamlab-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "사기 생존기(ScamLab) 백엔드 — Node + SQLite",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
+    "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
+    "extract": "node scripts/extract-content.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "express": "^4.22.3"
+  }
+}
