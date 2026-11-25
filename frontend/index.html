@@ -393,22 +393,26 @@
   .btn:disabled, .btn:disabled:hover { background:rgba(255,255,255,.1); color:rgba(255,255,255,.55); cursor:not-allowed; box-shadow:none; }
   .overlay canvas.siren { display:block; width:calc(100% + 52px); height:72px; margin:-20px -26px 8px; }
 
-  /* ===== 시작 전 목적 화면: 인트로 폰 화면(#introSlot) 안을 검게 덮고 문장이 한 줄씩 떠오른다. 버튼(또는 Enter)을 누르면 같은 화면에서 자가진단으로 넘어간다 ===== */
-  .purpose { position:absolute; inset:0; z-index:5; background:#030408; display:flex; flex-direction:column; justify-content:center; padding:12% 8% 7%; color:#fff; text-align:left; word-break:keep-all; animation:ppIn .5s ease-out; }
-  .purpose.out { opacity:0; transition:opacity .35s; }
-  .purpose .pp-eb { font-size:11px; font-weight:700; letter-spacing:.1em; color:#ff5a5f; margin-bottom:16px; }
-  .purpose h2 { font-size:clamp(21px,2.3vw,27px); font-weight:800; line-height:1.35; letter-spacing:-.6px; }
-  .purpose p { font-size:clamp(13px,1.15vw,15px); line-height:1.65; color:rgba(255,255,255,.72); margin-top:22px; }
-  .purpose .pp-key { font-size:clamp(16px,1.6vw,19px); font-weight:800; line-height:1.45; letter-spacing:-.4px; margin-top:22px; padding-left:12px; border-left:3px solid #e53935; }
-  .purpose .pp-go { margin-top:auto; width:100%; min-width:0; }
-  .purpose .pp-hint { margin-top:8px; text-align:center; color:rgba(255,255,255,.4); font-size:10.5px; }
+  /* ===== 시작 전 목적 화면 + 자가진단: 인트로 폰 화면(#introSlot) 안을 검게 덮고 문장이 한 줄씩 떠오른 뒤, 아래에서 자신감 1~5를 고르면 바로 시작한다 ===== */
+  .purpose { position:absolute; inset:0; z-index:5; background:#030408; display:flex; flex-direction:column; padding:11% 8% 7%; color:#fff; text-align:left; word-break:keep-all; animation:ppIn .5s ease-out; }
   .purpose .pp-body { margin:auto 0; }
-  @media (hover:none) { .purpose .pp-hint { display:none; } }   /* 터치 화면에는 Enter 안내가 필요 없다 */
-  .purpose .pp-eb, .purpose h2, .purpose p, .purpose .pp-key, .purpose .pp-go, .purpose .pp-hint { opacity:0; transform:translateY(8px); animation:ppUp .8s cubic-bezier(.2,.8,.2,1) forwards; }
-  .purpose .pp-eb { animation-delay:.1s } .purpose h2 { animation-delay:.3s } .purpose p { animation-delay:1.9s } .purpose .pp-key { animation-delay:3s } .purpose .pp-go, .purpose .pp-hint { animation-delay:4.2s }
+  .purpose .pp-eb { font-size:11px; font-weight:700; letter-spacing:.1em; color:#ff5a5f; margin-bottom:14px; }
+  .purpose h2 { font-size:clamp(20px,2.2vw,26px); font-weight:800; line-height:1.35; letter-spacing:-.6px; }
+  .purpose p { font-size:clamp(12.5px,1.1vw,14.5px); line-height:1.65; color:rgba(255,255,255,.72); margin-top:16px; }
+  .purpose .pp-key { font-size:clamp(15px,1.5vw,18px); font-weight:800; line-height:1.45; letter-spacing:-.4px; margin-top:16px; padding-left:12px; border-left:3px solid #e53935; }
+  .purpose .pp-pre { flex-shrink:0; padding-top:14px; border-top:1px solid rgba(255,255,255,.12); }
+  .purpose .pp-q { font-size:12px; line-height:1.5; text-align:center; color:rgba(255,255,255,.82); }
+  .purpose .scale { margin-top:8px; gap:5px; }
+  .purpose .scale button { width:auto; flex:1; height:40px; border-radius:10px; font-size:15px; }
+  .purpose .scale-cap { width:auto; font-size:10.5px; }
+  .purpose .pp-msg { min-height:1.4em; margin-top:6px; font-size:11.5px; text-align:center; color:#ff8a8a; }
+  .purpose .pp-hint { font-size:10.5px; text-align:center; color:rgba(255,255,255,.4); }
+  @media (hover:none) { .purpose .pp-hint { display:none; } }   /* 터치 화면에는 숫자 키 안내가 필요 없다 */
+  .purpose .pp-eb, .purpose h2, .purpose p, .purpose .pp-key, .purpose .pp-pre { opacity:0; transform:translateY(8px); animation:ppUp .8s cubic-bezier(.2,.8,.2,1) forwards; }
+  .purpose .pp-eb { animation-delay:.1s } .purpose h2 { animation-delay:.3s } .purpose p { animation-delay:1.7s } .purpose .pp-key { animation-delay:2.6s } .purpose .pp-pre { animation-delay:3.5s }
   @keyframes ppUp { to { opacity:1; transform:none; } }
   @keyframes ppIn { from { opacity:0; } to { opacity:1; } }
-  @media (prefers-reduced-motion: reduce) { .purpose, .purpose .pp-eb, .purpose h2, .purpose p, .purpose .pp-key, .purpose .pp-go, .purpose .pp-hint { animation:none; opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) { .purpose, .purpose .pp-eb, .purpose h2, .purpose p, .purpose .pp-key, .purpose .pp-pre { animation:none; opacity:1; transform:none; } }
   /* ===== intro ===== */
   .boot-cover { position:fixed; inset:0; z-index:101; background:#030408; }
   .intro { position:fixed; inset:0; z-index:100; background:#030408; overflow:hidden; }
@@ -422,6 +426,8 @@
   .intro-slot { position:absolute; overflow:hidden; opacity:0; transition:opacity .5s .1s; color:#fff; display:flex; flex-direction:column;
                 background:linear-gradient(180deg, rgba(14,22,70,.35), rgba(6,10,40,.2)); }
   .intro-slot.show { opacity:1; }
+  /* 영상 속 화면 가장자리는 흐릿하게 번져 있어 좌표만으로는 2~3px 틈이 남는다. 베젤 색 띠를 둘러 틈을 덮는다 */
+  .intro-slot { box-shadow:0 0 0 5px #04050a; }
   .intro.zoom-in .intro-slot { transition:opacity .5s 1s; }
   .intro[data-phase=playing] .intro-slot { opacity:0; }
   .intro-loader { position:absolute; inset:0; display:grid; place-items:center; opacity:0; pointer-events:none; transition:opacity .45s; background:#030408; }
@@ -1783,8 +1789,9 @@ async function startStage(idx, replay = false) {
   playTurn();
 }
 
-// 시작 전 목적 화면: 인트로 폰 화면 안에서 훈련의 의의를 먼저 새기고 시작한다. 버튼·Enter·Space로 넘어간다
-function showPurpose(next) {
+// 시작 전 목적 화면 + 자가진단: 인트로 폰 화면 안에서 훈련의 의의를 새긴 뒤, 아래에서 자신감(1~5)을 고르면 곧바로 시작한다.
+// onPick(v)가 false를 돌려주면(서버 연결 실패 등) 같은 화면에서 다시 고를 수 있다
+function showPurpose(onPick) {
   const el = document.createElement('div');
   el.className = 'purpose'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'ppTitle');
   el.innerHTML = `<div class="pp-body">
@@ -1793,16 +1800,26 @@ function showPurpose(next) {
       <p>사기는 당신이 똑똑하지 않아서 당하는 게 아닙니다. 급하게, 다정하게, 공식처럼 다가오기 때문입니다.</p>
       <div class="pp-key">여기서 연습한 한 번이,<br>진짜 한 번을 막습니다.</div>
     </div>
-    <button class="btn pp-go" type="button">훈련 시작하기 ›</button>
-    <div class="pp-hint" aria-hidden="true">Enter 키로 넘어가기</div>`;
+    <div class="pp-pre">
+      <div class="pp-q">시작 전에 하나만 · 사기 메시지를 알아보고 대처할 자신이 있나요?</div>
+      ${scalePicker()}
+      <div class="pp-msg" id="preMsg" role="status"></div>
+      <div class="pp-hint" aria-hidden="true">숫자 키 1~5로도 고를 수 있어요</div>
+    </div>`;
   ($('introSlot') || document.body).appendChild(el);   // 인트로 폰 화면 안에 띄운다
-  const btn = el.querySelector('.pp-go');
-  let done = false;
-  const go = () => { if (done) return; done = true; document.removeEventListener('keydown', onKey, true); el.classList.add('out'); setTimeout(() => { el.remove(); next(); }, 350); };
-  const onKey = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); go(); } };
-  btn.onclick = go;
+  let busy = false;
+  const onKey = e => {
+    if (!el.isConnected) { document.removeEventListener('keydown', onKey, true); return; }
+    if (/^[1-5]$/.test(e.key)) { e.preventDefault(); e.stopPropagation(); el.querySelector(`.scale button[data-v="${e.key}"]`)?.click(); }
+  };
   document.addEventListener('keydown', onKey, true);
-  btn.focus({ preventScroll: true });
+  bindScale(async v => {
+    if (busy) return; busy = true; $('preMsg').textContent = '';
+    const ok = await onPick(v);
+    if (ok === false) { busy = false; return; }
+    document.removeEventListener('keydown', onKey, true);
+  });
+  el.querySelector('.scale button').focus({ preventScroll: true });
 }
 
 function renderTitle(el) {
@@ -1818,26 +1835,24 @@ function renderTitle(el) {
       ${S.sessionId ? '<button class="btn ghost" id="freshBtn">처음부터 새로 하기</button>' : ''}
       <div class="ts-legal">게임 속 링크, 계정, 기관 명의는 모두 교육용 가상 설정입니다.</div>
     </div>`;
-  // 시작을 누르면 같은 자리에서 사전 자가진단 한 문항을 묻고, 고르는 즉시 서버에 세션을 만들고 입장한다
-  const askPre = () => {
-    $('tsFoot').innerHTML = `<div class="q">시작 전에 하나만 · 사기 메시지를 알아보고 대처할 자신이 있나요?</div>
-      ${scalePicker()}<div class="ts-legal" id="preMsg"></div>`;
-    bindScale(async v => {
-      try {
-        const ses = await ScamApi.startSession(v);
-        applyRules(ses.rules);
-        Object.assign(S, { pre:v, sessionId:ses.session_id, balance:START_BALANCE });
-        setupInbox();
-        updateHud();
-        S.arrivedShown = 0;   // 입장하면 알림이 하나씩 도착하는 연출
-        setTimeout(() => Intro.enter(), 180);
-      } catch (e) {
-        $('preMsg').textContent = '서버에 연결하지 못했습니다. 잠시 후 다시 골라 주세요.';
-      }
-    });
+  // 시작을 누르면 폰 화면 안에서 목적 화면 + 자가진단을 띄우고, 고르는 즉시 서버에 세션을 만들고 입장한다
+  const startWith = async v => {
+    try {
+      const ses = await ScamApi.startSession(v);
+      applyRules(ses.rules);
+      Object.assign(S, { pre:v, sessionId:ses.session_id, balance:START_BALANCE });
+      setupInbox();
+      updateHud();
+      S.arrivedShown = 0;   // 입장하면 알림이 하나씩 도착하는 연출
+      setTimeout(() => Intro.enter(), 180);
+      return true;
+    } catch (e) {
+      $('preMsg').textContent = '서버에 연결하지 못했습니다. 잠시 후 다시 골라 주세요.';
+      return false;
+    }
   };
-  $('startBtn').onclick = () => { if (S.pre != null) Intro.enter(); else showPurpose(askPre); };
-  if ($('freshBtn')) $('freshBtn').onclick = () => { ScamApi.forgetSession(); resetGame(); showPurpose(askPre); };
+  $('startBtn').onclick = () => { if (S.pre != null) Intro.enter(); else showPurpose(startWith); };
+  if ($('freshBtn')) $('freshBtn').onclick = () => { ScamApi.forgetSession(); resetGame(); showPurpose(startWith); };
 }
 
 // 새로고침해도 이어 하기: 저장된 세션이 있으면 서버 기록으로 진행 상황을 되살린다
@@ -2130,8 +2145,8 @@ loadContent().then(async () => {
     video: 'assets/intro.mp4',
     poster: 'assets/intro-poster.webp',
     back: 'assets/intro-back.webp',
-    phoneRect: { x:0.4505, y:0.1472, w:0.1932, h:0.7472, r:0.1 },
-    phoneQuad: [[0.4906,0.2296],[0.6167,0.2019],[0.6771,0.6991],[0.5437,0.7269]],
+    phoneRect: { x:0.4505, y:0.1472, w:0.1932, h:0.7472, r:0.12 },
+    phoneQuad: [[0.4836,0.2306],[0.6204,0.1981],[0.6838,0.7004],[0.5440,0.7426]],
     onTitle: renderTitle,
     // 아직 못 막은 첫 사건부터. 모두 막았는데 리포트 전이면 사후 자가진단으로
     onEnter: () => { const f = frontier(); f < SCENARIOS.length ? showStageIntro(f) : showPostCheck(); focusPhone(); }
