@@ -8,6 +8,7 @@
 scamlab/
 ├── frontend/              ← 화면 (HTML/CSS/JS) — 프론트 담당
 │   ├── index.html
+│   ├── assets/            ← 배경·인트로 영상·사건 그림
 │   └── js/api.js          ← 백엔드 호출 모음 (ScamApi)
 ├── backend/               ← Node + SQLite — 백엔드 담당
 │   ├── src/
@@ -40,7 +41,7 @@ scamlab/
 cd backend
 npm install
 npm run seed      # content/*.json → backend/data/scamlab.db (처음 한 번, 콘텐츠를 고친 뒤에도)
-npm start         # http://localhost:3000  (프론트 + /api)
+npm start         # http://localhost:3000 을 브라우저로 열면 게임 (프론트 + /api 같은 주소)
 npm run dev       # 파일 저장하면 자동 재시작
 npm test          # 채점·API 테스트
 ```
