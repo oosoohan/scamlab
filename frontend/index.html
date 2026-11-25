@@ -1034,7 +1034,7 @@
     el.onclick = end;
     (async () => {
       const wait = ms => new Promise(r => setTimeout(r, ms));
-      await wait(2300);                       // 폰 쪽으로 다가가며 화면이 꺼지는 동안
+      await wait(1150);                       // 화면이 꺼지는 동안 (카메라가 멈춘 뒤 약 1.4초 만에 첫 줄)
       for (const s of lines) { if (gone) return; s.classList.add('show'); await wait(550); }
       await wait(1800);                       // 읽을 시간
       end();
