@@ -17,6 +17,8 @@
   * { box-sizing:border-box; margin:0; padding:0; }
   html,body { height:100%; }
   body { font-family:'Pretendard',-apple-system,system-ui,sans-serif; background:var(--ink); color:#fff; overflow:hidden; -webkit-font-smoothing:antialiased; word-break:keep-all; overflow-wrap:anywhere; }
+  /* 한국어 줄바꿈: 단어 중간(예: '어떠세⏎요')에서 끊지 않는다. 너무 긴 단어·주소만 넘칠 때 끊는다 */
+  body { word-break:keep-all; overflow-wrap:break-word; }
   /* 배경: 식탁 위 폰 사진을 잠금화면 배경처럼 깐다. 왼쪽만 어둡게 눌러 글자를 읽히게 하고 가운데 사진 속 폰은 그대로 보이게 둔다 */
   .wall { position:fixed; inset:0; z-index:0; background:#07080c url('assets/bg-wall.webp') 50% 50%/cover; pointer-events:none; }
   .wall::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg, rgba(5,6,10,.74) 0%, rgba(5,6,10,.5) 30%, rgba(5,6,10,0) 46%, rgba(5,6,10,0) 62%, rgba(5,6,10,.58) 76%); }
@@ -296,7 +298,7 @@
   .row { display:flex; gap:8px; align-items:flex-end; animation:pop .3s ease-out; }
   .row.out { justify-content:flex-end; }
   .row .mini { width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:700; }
-  .bubble { max-width:76%; padding:10px 13px; border-radius:18px; font-size:16px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+  .bubble { max-width:76%; padding:10px 13px; border-radius:18px; font-size:16px; line-height:1.55; white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; }   /* 한국어는 단어(어절) 단위로 줄바꿈, 넘칠 때만 글자 단위 */
   .in .bubble { background:var(--bubble-in); color:#111; border-bottom-left-radius:5px; }
   .out .bubble { background:var(--bubble-out); color:var(--out-text); border-bottom-right-radius:5px; }
   .bubble .link { color:#2563eb; text-decoration:underline; word-break:break-all; cursor:pointer; }
