@@ -1,0 +1,17 @@
+{
+  "name": "scamlab",
+  "private": true,
+  "description": "사기 생존기(ScamLab) — 채팅으로 배우는 금융사기 방어 훈련",
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "start": "npm start -w backend",
+    "dev": "npm run dev -w backend",
+    "test": "npm test -w backend",
+    "seed": "npm run seed -w backend"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
