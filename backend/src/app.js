@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const { initSchema } = require('./db');
+const { seedIfChanged } = require('./seed');
 const { loadContent } = require('./content');
 const { createStore } = require('./store');
 const { createApiRouter } = require('./routes/api');
@@ -22,21 +24,25 @@ function cors(origins) {
   };
 }
 
-function createApp({ db, corsOrigins = [], serveFrontend = true } = {}) {
-  const content = loadContent(db);
-  if (!content.scenarios.length) {
-    throw new Error('콘텐츠가 비어 있습니다. 먼저 `npm run seed` 를 실행하세요.');
-  }
-  const store = createStore(db);
+/**
+ * DB 준비(스키마 → 콘텐츠가 바뀌었으면 시드 → 메모리 로드) 후 Express 앱을 만든다.
+ * 로컬 서버(server.js)와 Vercel 함수(api/index.js)가 같은 함수를 쓴다.
+ * @returns {Promise<{ app: import('express').Express, seeded: object|null }>}
+ */
+async function buildApp({ db, corsOrigins = [], serveFrontend = true } = {}) {
+  await initSchema(db);
+  const seeded = await seedIfChanged(db);
+  const content = await loadContent(db);
+  if (!content.scenarios.length) throw new Error('콘텐츠가 비어 있습니다. content/*.json 을 확인하세요.');
+
   const app = express();
   app.disable('x-powered-by');
+  app.use('/api', cors(corsOrigins), createApiRouter({ store: createStore(db), content }));
 
-  app.use('/api', cors(corsOrigins), createApiRouter({ store, content }));
-
-  // 같은 주소에서 프론트도 서빙한다 → CORS 설정 없이 바로 동작
+  // 로컬에서는 같은 주소로 프론트도 서빙한다 (Vercel에서는 frontend/를 Vercel이 직접 서빙)
   if (serveFrontend && fs.existsSync(FRONTEND_DIR)) app.use(express.static(FRONTEND_DIR));
 
-  return app;
+  return { app, seeded };
 }
 
-module.exports = { createApp };
+module.exports = { buildApp };

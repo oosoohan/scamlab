@@ -1,7 +1,12 @@
--- 사기 생존기 (ScamLab) SQLite 스키마
+-- 사기 생존기 (ScamLab) SQLite 스키마 — 로컬 파일 DB와 Turso(libSQL)에서 똑같이 쓴다
 -- 콘텐츠(문제) 테이블은 content/*.json 에서 시드로 채우고, 플레이 기록 테이블은 API가 채운다.
+-- 참조 관계(REFERENCES)는 구조를 설명하는 용도이고, 값 검사는 API 코드가 한다.
 
-PRAGMA foreign_keys = ON;
+-- 콘텐츠 버전 등 작은 설정값
+CREATE TABLE IF NOT EXISTS meta (
+  key    TEXT PRIMARY KEY,
+  value  TEXT NOT NULL
+);
 
 /* ===================== 콘텐츠 ===================== */
 

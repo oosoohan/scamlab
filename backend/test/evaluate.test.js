@@ -1,14 +1,13 @@
 // 채점 로직 단위 테스트 — 지금 프론트(index_v2.html)와 같은 결과가 나오는지 확인
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { seededDb, picker } = require('./helpers');
-const { loadContent } = require('../src/content');
+const { seededApp, picker } = require('./helpers');
 const { foldAttempt } = require('../src/game/attempt');
 const { evaluateSession } = require('../src/game/evaluate');
 const { loadRules } = require('../src/game/rules');
 
-const content = loadContent(seededDb());
-const pick = picker(content);
+let content, pick;
+test.before(async () => { ({ content } = await seededApp()); pick = picker(content); });
 const rules = loadRules('v1');
 const S = id => content.scenarioById.get(id);
 
