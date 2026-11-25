@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { createClient } = require('@libsql/client');
 
 const DEFAULT_PATH = path.resolve(__dirname, '../data/scamlab.db');
 const SCHEMA_SQL = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
@@ -21,6 +20,10 @@ function openDb(url) {
       url = 'file:' + file;
     }
   }
+  // 로컬 파일·메모리 DB만 네이티브 SQLite 모듈이 필요하다.
+  // 원격(Turso)은 네이티브 모듈이 없는 웹 클라이언트(HTTP)를 써서 Vercel 같은 서버리스에서도 안전하게 뜬다.
+  const isLocal = url === ':memory:' || url.startsWith('file:');
+  const { createClient } = isLocal ? require('@libsql/client') : require('@libsql/client/web');
   return createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN });
 }
 
